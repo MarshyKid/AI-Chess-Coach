@@ -7,7 +7,7 @@ from typing import TypeVar, cast
 
 import chess
 
-from ai_chess_coach.models import PositionAnalysis
+from ai_chess_coach.models import AttackerInfo, PositionAnalysis
 
 T = TypeVar("T")
 
@@ -41,6 +41,11 @@ class FeatureStore:
 
         return self.get_or_compute("pinned_pieces", self._compute_pinned_pieces)
 
+    def attack_map(self) -> dict[chess.Square, tuple[AttackerInfo, ...]]:
+        """Return opponent attackers for every occupied square."""
+
+        return self.get_or_compute("attack_map", self._compute_attack_map)
+
     def get_or_compute(self, feature_name: str, compute: Callable[[], T]) -> T:
         """Return a cached feature value, computing it on first access."""
 
@@ -70,3 +75,33 @@ class FeatureStore:
                 pinned_squares.append(square)
 
         return tuple(pinned_squares)
+
+    def _compute_attack_map(self) -> dict[chess.Square, tuple[AttackerInfo, ...]]:
+        attack_map: dict[chess.Square, tuple[AttackerInfo, ...]] = {}
+
+        for target_square in chess.SQUARES:
+            target_piece = self._board.piece_at(target_square)
+            if target_piece is None:
+                continue
+
+            attacker_squares = self._board.attackers(not target_piece.color, target_square)
+            attackers: list[AttackerInfo] = []
+            for attacker_square in chess.SQUARES:
+                if attacker_square not in attacker_squares:
+                    continue
+
+                attacker_piece = self._board.piece_at(attacker_square)
+                if attacker_piece is None:
+                    continue
+
+                attackers.append(
+                    AttackerInfo(
+                        square=attacker_square,
+                        piece=attacker_piece,
+                        is_pinned=self._board.is_pinned(attacker_piece.color, attacker_square),
+                    )
+                )
+
+            attack_map[target_square] = tuple(attackers)
+
+        return attack_map
