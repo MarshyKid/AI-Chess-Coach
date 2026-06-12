@@ -1,0 +1,9 @@
+[project]
+name = "ai-chess-coach"
+version = "0.1.0"
+description = "Personalized chess coaching through deterministic analysis and verified evidence."
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false
