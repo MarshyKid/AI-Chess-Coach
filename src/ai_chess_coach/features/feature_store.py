@@ -7,7 +7,7 @@ from typing import TypeVar, cast
 
 import chess
 
-from ai_chess_coach.models import AttackerInfo, DefenderInfo, PositionAnalysis
+from ai_chess_coach.models import AttackerInfo, DefenderInfo, PieceSafety, PositionAnalysis
 
 T = TypeVar("T")
 
@@ -50,6 +50,11 @@ class FeatureStore:
         """Return same-color defenders for every occupied square."""
 
         return self.get_or_compute("defender_map", self._compute_defender_map)
+
+    def piece_safety(self) -> dict[chess.Square, PieceSafety]:
+        """Return tactical safety facts for every occupied square."""
+
+        return self.get_or_compute("piece_safety", self._compute_piece_safety)
 
     def get_or_compute(self, feature_name: str, compute: Callable[[], T]) -> T:
         """Return a cached feature value, computing it on first access."""
@@ -135,3 +140,25 @@ class FeatureStore:
             defender_map[target_square] = tuple(defenders)
 
         return defender_map
+
+    def _compute_piece_safety(self) -> dict[chess.Square, PieceSafety]:
+        pinned_squares = set(self.pinned_pieces())
+        attack_map = self.attack_map()
+        defender_map = self.defender_map()
+        piece_safety: dict[chess.Square, PieceSafety] = {}
+
+        for square in chess.SQUARES:
+            piece = self._board.piece_at(square)
+            if piece is None:
+                continue
+
+            piece_safety[square] = PieceSafety(
+                square=square,
+                piece=piece,
+                attackers=attack_map[square],
+                defenders=defender_map[square],
+                is_pinned=square in pinned_squares,
+                see_value=None,
+            )
+
+        return piece_safety
