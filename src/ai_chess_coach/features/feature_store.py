@@ -87,9 +87,6 @@ class FeatureStore:
             attacker_squares = self._board.attackers(not target_piece.color, target_square)
             attackers: list[AttackerInfo] = []
             for attacker_square in attacker_squares:
-                if attacker_square not in attacker_squares:
-                    continue
-
                 attacker_piece = self._board.piece_at(attacker_square)
                 if attacker_piece is None:
                     continue
