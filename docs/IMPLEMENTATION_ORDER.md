@@ -20,70 +20,87 @@ Build everything else later.
 
 The system's primary value comes from:
 
-- feature extraction
-- detector logic
-- engine verification
-- weakness profiling
+* feature extraction
+* detector logic
+* engine verification
+* weakness profiling
 
 not from UI or infrastructure.
 
 ---
 
+# Current Allowed Scope
+
+Unless explicitly instructed otherwise, only work on the current task from `docs/TASKS.md`.
+
+Do not create:
+
+* placeholder APIs
+* placeholder frontend folders
+* placeholder database models
+* placeholder LLM wrappers
+* placeholder deployment configuration
+* future feature stubs
+
+unless the current task explicitly requires them.
+
+---
+
 # Required Order
 
-## Phase 1
-
-Core Domain Models
+## Phase 1 — Core Domain Models
 
 Tasks:
 
-- Task 1
+* Task 1
+
+Goal:
+
+Define the core data structures used by every later phase.
 
 Must be completed before any other phase.
 
 ---
 
-## Phase 2
-
-Replay Infrastructure
+## Phase 2 — Replay Infrastructure
 
 Tasks:
 
-- Task 2
+* Task 2
 
 Goal:
 
-Reliable move-by-move replay.
+Reliable move-by-move PGN replay.
+
+This phase proves that games can be transformed into `MoveTransition` objects.
 
 ---
 
-## Phase 3
-
-Feature Infrastructure
+## Phase 3 — Feature Infrastructure
 
 Tasks:
 
-- Task 3
-- Task 4
-- Task 5
-- Task 6
-- Task 7
+* Task 3
+* Task 4
+* Task 5
+* Task 6
+* Task 7
 
 Goal:
 
 Reliable board understanding.
 
-No detectors should be built before PieceSafety is complete.
+No detectors should be built before `PieceSafety` is complete.
+
+`FeatureStore` must be the single source of reusable chess facts.
 
 ---
 
-## Phase 4
-
-Detector Infrastructure
+## Phase 4 — Detector Infrastructure
 
 Tasks:
 
-- Task 8
+* Task 8
 
 Goal:
 
@@ -91,69 +108,90 @@ Create the detector framework.
 
 No individual detectors before this task.
 
+The detector contract must exist before detector implementations.
+
 ---
 
-## Phase 5
-
-MVP Detectors
+## Phase 5 — First MVP Detector
 
 Tasks:
 
-- Task 9
-- Task 10
-- Task 11
+* Task 9
 
 Goal:
 
-Validate that the architecture can identify meaningful chess concepts.
+Validate that the architecture can detect a concrete chess concept.
 
-These detectors form the MVP.
+The first detector is `HangingPieceDetector` because piece safety is the most important tactical primitive for the MVP.
+
+After this phase, the project should be able to detect basic hanging-piece events from replayed games.
 
 ---
 
-## Phase 6
-
-Engine Verification
+## Phase 6 — Engine Verification
 
 Tasks:
 
-- Task 12
-- Task 13
-- Task 14
+* Task 12
+* Task 13
+* Task 14
 
 Goal:
 
 Attach objective evidence to detector findings.
 
+Engine verification may begin after `HangingPieceDetector` exists.
+
 No profiling before verification exists.
+
+Detectors must remain separate from Stockfish.
 
 ---
 
-## Phase 7
-
-Pattern Aggregation
+## Phase 7 — Additional MVP Detectors
 
 Tasks:
 
-- Task 15
-- Task 16
+* Task 10
+* Task 11
 
 Goal:
 
-Transform isolated events into recurring weaknesses.
+Expand detector coverage beyond hanging pieces.
 
-This phase enables personalized coaching.
+MVP detectors:
+
+* `HangingPieceDetector`
+* `ForkDetector`
+* `KnightOutpostDetector`
+
+These detectors validate that the framework supports tactical and positional concepts.
 
 ---
 
-## Phase 8
-
-Coaching Layer
+## Phase 8 — Pattern Aggregation
 
 Tasks:
 
-- Task 17
-- Task 18
+* Task 15
+* Task 16
+
+Goal:
+
+Transform isolated verified events into recurring weaknesses.
+
+This phase enables personalized coaching.
+
+Profiles must be built from events and patterns, not raw PGNs.
+
+---
+
+## Phase 9 — Coaching Layer
+
+Tasks:
+
+* Task 17
+* Task 18
 
 Goal:
 
@@ -165,27 +203,29 @@ The coaching layer may not discover evidence.
 
 ---
 
-## Phase 9
-
-Retrieval Layer
+## Phase 10 — Retrieval Layer
 
 Tasks:
 
-- Task 19
+* Task 19
 
 Goal:
 
-Support future conversational coaching.
+Support future conversational coaching by retrieving relevant evidence.
+
+Retrieval should operate over:
+
+* verified events
+* detected patterns
+* weakness profiles
 
 ---
 
-## Phase 10
-
-AI Coach
+## Phase 11 — AI Coach
 
 Tasks:
 
-- Task 20
+* Task 20
 
 Goal:
 
@@ -195,39 +235,73 @@ The AI coach is a teacher.
 
 The AI coach is not a chess engine.
 
+The AI coach must not analyze raw PGNs directly.
+
 ---
 
 # Explicitly Forbidden Until Later
 
 Do not build:
 
-- React frontend
-- Vite application
-- User accounts
-- Authentication
-- Database persistence
-- Cloud deployment
-- Analytics dashboards
-- Mobile applications
+* React frontend
+* Vite application
+* user accounts
+* authentication
+* database persistence
+* cloud deployment
+* analytics dashboards
+* mobile applications
 
 until the chess intelligence engine is validated.
 
 ---
 
-# Definition of MVP Completion
+# Technical MVP
 
-The MVP is complete when:
+The Technical MVP is complete when:
 
 1. PGNs can be replayed.
-2. PieceSafety can be computed.
-3. Hanging pieces can be detected.
-4. Forks can be detected.
-5. Knight outposts can be detected.
-6. Events can be verified by Stockfish.
-7. Weakness profiles can be generated.
-8. Game reviews can be produced.
+2. `MoveTransition` objects can be generated.
+3. `FeatureStore` works.
+4. `PieceSafety` can be computed.
+5. Hanging pieces can be detected.
+6. Hanging-piece events can be verified by Stockfish.
+7. Tests pass.
 
-Only after MVP completion should frontend development begin.
+This milestone proves that the core chess intelligence pipeline works.
+
+---
+
+# Coaching MVP
+
+The Coaching MVP is complete when:
+
+1. Forks can be detected.
+2. Knight outposts can be detected.
+3. Verified events can be aggregated into patterns.
+4. Weakness profiles can be generated.
+5. Game reviews can be produced.
+6. Coaching moments can be generated from verified evidence.
+7. Tests pass.
+
+This milestone proves that the system can move from analysis to coaching.
+
+---
+
+# Frontend Eligibility
+
+Frontend development may begin only after the Coaching MVP is complete.
+
+The future frontend should consume backend APIs.
+
+The frontend must not contain:
+
+* chess analysis logic
+* detector logic
+* Stockfish calls
+* raw PGN analysis logic
+
+All chess intelligence remains in the backend.
 
 ---
 
@@ -235,15 +309,15 @@ Only after MVP completion should frontend development begin.
 
 After MVP completion, future tasks may include:
 
-- Additional detectors
-- Database storage
-- Embeddings and RAG
-- Puzzle recommendations
-- Master game retrieval
-- FastAPI backend
-- React frontend
-- User accounts
-- Progress tracking
-- Weekly coaching reports
+* additional detectors
+* database storage
+* embeddings and RAG
+* puzzle recommendations
+* master game retrieval
+* FastAPI backend
+* React frontend
+* user accounts
+* progress tracking
+* weekly coaching reports
 
 These are intentionally out of scope for the initial implementation.
