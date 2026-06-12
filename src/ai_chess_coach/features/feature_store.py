@@ -36,6 +36,11 @@ class FeatureStore:
 
         return self._board.fen()
 
+    def pinned_pieces(self) -> tuple[chess.Square, ...]:
+        """Return occupied squares containing pieces pinned to their king."""
+
+        return self.get_or_compute("pinned_pieces", self._compute_pinned_pieces)
+
     def get_or_compute(self, feature_name: str, compute: Callable[[], T]) -> T:
         """Return a cached feature value, computing it on first access."""
 
@@ -53,3 +58,15 @@ class FeatureStore:
         """Return the names of currently cached features."""
 
         return tuple(self._cache)
+
+    def _compute_pinned_pieces(self) -> tuple[chess.Square, ...]:
+        pinned_squares: list[chess.Square] = []
+
+        for square in chess.SQUARES:
+            piece = self._board.piece_at(square)
+            if piece is None:
+                continue
+            if self._board.is_pinned(piece.color, square):
+                pinned_squares.append(square)
+
+        return tuple(pinned_squares)
