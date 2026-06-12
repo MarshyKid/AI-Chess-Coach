@@ -5,5 +5,9 @@ description = "Personalized chess coaching through deterministic analysis and ve
 requires-python = ">=3.12"
 dependencies = []
 
-[tool.uv]
-package = false
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_chess_coach"]
