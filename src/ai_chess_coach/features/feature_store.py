@@ -7,7 +7,7 @@ from typing import TypeVar, cast
 
 import chess
 
-from ai_chess_coach.models import AttackerInfo, PositionAnalysis
+from ai_chess_coach.models import AttackerInfo, DefenderInfo, PositionAnalysis
 
 T = TypeVar("T")
 
@@ -45,6 +45,11 @@ class FeatureStore:
         """Return opponent attackers for every occupied square."""
 
         return self.get_or_compute("attack_map", self._compute_attack_map)
+
+    def defender_map(self) -> dict[chess.Square, tuple[DefenderInfo, ...]]:
+        """Return same-color defenders for every occupied square."""
+
+        return self.get_or_compute("defender_map", self._compute_defender_map)
 
     def get_or_compute(self, feature_name: str, compute: Callable[[], T]) -> T:
         """Return a cached feature value, computing it on first access."""
@@ -102,3 +107,31 @@ class FeatureStore:
             attack_map[target_square] = tuple(attackers)
 
         return attack_map
+
+    def _compute_defender_map(self) -> dict[chess.Square, tuple[DefenderInfo, ...]]:
+        defender_map: dict[chess.Square, tuple[DefenderInfo, ...]] = {}
+
+        for target_square in chess.SQUARES:
+            target_piece = self._board.piece_at(target_square)
+            if target_piece is None:
+                continue
+
+            defender_squares = self._board.attackers(target_piece.color, target_square)
+            defenders: list[DefenderInfo] = []
+            for defender_square in sorted(defender_squares):
+                defender_piece = self._board.piece_at(defender_square)
+                if defender_piece is None:
+                    continue
+
+                defenders.append(
+                    DefenderInfo(
+                        square=defender_square,
+                        piece=defender_piece,
+                        is_pinned=self._board.is_pinned(defender_piece.color, defender_square),
+                        is_overloaded=False,
+                    )
+                )
+
+            defender_map[target_square] = tuple(defenders)
+
+        return defender_map
