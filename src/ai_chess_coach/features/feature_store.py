@@ -86,7 +86,7 @@ class FeatureStore:
 
             attacker_squares = self._board.attackers(not target_piece.color, target_square)
             attackers: list[AttackerInfo] = []
-            for attacker_square in attacker_squares:
+            for attacker_square in sorted(attacker_squares):
                 attacker_piece = self._board.piece_at(attacker_square)
                 if attacker_piece is None:
                     continue
