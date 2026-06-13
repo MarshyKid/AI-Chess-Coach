@@ -259,6 +259,13 @@ Fields:
 - `evidence`
 - `severity`
 
+`side` is the color/player the event is attributed to. It is not necessarily the
+player who made the move. For `HangingPieceDetector`:
+
+- `hanging_piece_created`: `side` is the color of the piece that became hanging.
+- `hanging_piece_ignored`: `side` is the player who moved and ignored the opponent's hanging piece.
+- `hanging_piece_lost`: `side` is the color of the hanging piece that was captured.
+
 Examples of `event_type`:
 
 - `hanging_piece_created`

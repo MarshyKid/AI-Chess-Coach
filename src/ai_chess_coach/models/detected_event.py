@@ -10,7 +10,11 @@ import chess
 
 @dataclass(frozen=True)
 class DetectedEvent:
-    """Structured occurrence found by a deterministic detector."""
+    """Structured occurrence found by a deterministic detector.
+
+    The side is the color/player the event is attributed to. It is not
+    necessarily the player who made the move.
+    """
 
     event_type: str
     side: chess.Color
