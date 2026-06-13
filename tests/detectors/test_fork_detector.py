@@ -162,4 +162,4 @@ class ForkDetectorTest(unittest.TestCase):
         import ai_chess_coach.detectors as detectors
 
         self.assertIs(detectors.ForkDetector, ForkDetector)
-        self.assertFalse(hasattr(detectors, "KnightOutpostDetector"))
+        self.assertFalse(hasattr(detectors, "EngineVerificationDetector"))
