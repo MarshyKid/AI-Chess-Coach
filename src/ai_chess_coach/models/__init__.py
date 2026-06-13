@@ -9,6 +9,7 @@ from ai_chess_coach.models.piece_safety import (
     PieceSafety,
 )
 from ai_chess_coach.models.position_analysis import PositionAnalysis
+from ai_chess_coach.models.verified_event import VerifiedEvent
 
 __all__ = [
     "AttackerInfo",
@@ -18,4 +19,5 @@ __all__ = [
     "MoveTransition",
     "PieceSafety",
     "PositionAnalysis",
+    "VerifiedEvent",
 ]
