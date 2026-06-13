@@ -133,9 +133,8 @@ class DetectorFrameworkTest(unittest.TestCase):
         self.assertNotIn("recommendation", field_names)
         self.assertNotIn("advice", field_names)
 
-    def test_no_actual_chess_detector_modules_are_exposed(self) -> None:
+    def test_future_chess_detector_modules_are_not_exposed(self) -> None:
         import ai_chess_coach.detectors as detectors
 
-        self.assertFalse(hasattr(detectors, "HangingPieceDetector"))
         self.assertFalse(hasattr(detectors, "ForkDetector"))
         self.assertFalse(hasattr(detectors, "KnightOutpostDetector"))
