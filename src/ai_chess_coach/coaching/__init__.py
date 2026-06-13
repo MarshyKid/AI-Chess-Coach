@@ -1,0 +1,7 @@
+"""Coaching utilities for AI Chess Coach."""
+
+from ai_chess_coach.coaching.review_generator import ReviewGenerator
+
+__all__ = [
+    "ReviewGenerator",
+]
