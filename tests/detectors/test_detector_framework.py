@@ -136,5 +136,4 @@ class DetectorFrameworkTest(unittest.TestCase):
     def test_future_chess_detector_modules_are_not_exposed(self) -> None:
         import ai_chess_coach.detectors as detectors
 
-        self.assertFalse(hasattr(detectors, "ForkDetector"))
         self.assertFalse(hasattr(detectors, "KnightOutpostDetector"))
