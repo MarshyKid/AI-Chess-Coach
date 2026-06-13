@@ -11,6 +11,7 @@ from ai_chess_coach.models.piece_safety import (
 )
 from ai_chess_coach.models.position_analysis import PositionAnalysis
 from ai_chess_coach.models.verified_event import VerifiedEvent
+from ai_chess_coach.models.weakness_profile import WeaknessProfile
 
 __all__ = [
     "AttackerInfo",
@@ -22,4 +23,5 @@ __all__ = [
     "PieceSafety",
     "PositionAnalysis",
     "VerifiedEvent",
+    "WeaknessProfile",
 ]
