@@ -79,6 +79,33 @@ class FakeEventVerifier:
         )
 
 
+class SelectingFakeEventVerifier:
+    def __init__(self) -> None:
+        self.events = []
+
+    def verify(self, event: DetectedEvent) -> VerifiedEvent:
+        self.events.append(event)
+        side_delta_by_event_type = {
+            "hanging_piece_created": -100,
+            "fork_created": 120,
+            "fork_missed": 140,
+        }
+        side_delta = side_delta_by_event_type[event.event_type]
+        return VerifiedEvent(
+            event=event,
+            engine_assessment=EngineAssessment(
+                eval_before=0,
+                eval_after=side_delta,
+                eval_delta=side_delta,
+                best_move=event.move,
+                principal_variation=(event.move,),
+                depth=1,
+                eval_delta_for_event_side=side_delta,
+                impact_magnitude=abs(side_delta),
+            ),
+        )
+
+
 class RaisingEventVerifier:
     def verify(self, event: DetectedEvent) -> VerifiedEvent:
         raise RuntimeError("verification failed")
@@ -230,6 +257,21 @@ class GameAnalysisPipelineTest(unittest.TestCase):
         self.assertEqual((), aggregator.received_events)
         self.assertEqual((), builder.received_patterns)
         self.assertEqual((), review_generator.received_events)
+
+    def test_raw_verified_events_remain_when_review_selects_fewer_moments(self) -> None:
+        verifier = SelectingFakeEventVerifier()
+
+        result = GameAnalysisPipeline(
+            detection_pipeline=FakeDetectionPipeline(),  # type: ignore[arg-type]
+            event_verifier=verifier,  # type: ignore[arg-type]
+            pattern_aggregator=FakePatternAggregator(),  # type: ignore[arg-type]
+            weakness_profile_builder=FakeWeaknessProfileBuilder(),  # type: ignore[arg-type]
+        ).analyze_pgn(SIMPLE_PGN)
+
+        self.assertEqual(3, len(result.verified_events))
+        self.assertEqual(tuple(verifier.events), result.detected_events)
+        self.assertEqual(2, len(result.coaching_moments))
+        self.assertLess(len(result.coaching_moments), len(result.verified_events))
 
     def test_verifier_exception_propagates(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "verification failed"):

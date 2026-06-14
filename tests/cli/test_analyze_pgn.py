@@ -96,6 +96,24 @@ class AnalyzePgnCliTest(unittest.TestCase):
         self.assertIn("- Recurring Themes: none", output)
         self.assertIn("Coaching Moments (0)", output)
 
+    def test_format_result_keeps_raw_verified_events_separate_from_selected_moments(
+        self,
+    ) -> None:
+        base_result = populated_result()
+        result = GameAnalysisResult(
+            transitions=base_result.transitions,
+            detected_events=base_result.detected_events,
+            verified_events=base_result.verified_events * 2,
+            detected_patterns=base_result.detected_patterns,
+            weakness_profile=base_result.weakness_profile,
+            coaching_moments=base_result.coaching_moments,
+        )
+
+        output = analyze_pgn.format_result(result)
+
+        self.assertIn("Verified Events (2)", output)
+        self.assertIn("Coaching Moments (1)", output)
+
     def test_main_success_reads_file_runs_pipeline_prints_result_and_closes_engine(self) -> None:
         fake_engine = FakeEngine()
         fake_pipeline = FakePipeline(result=empty_result())
