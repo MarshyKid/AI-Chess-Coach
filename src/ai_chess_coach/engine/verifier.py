@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import chess
+
 from ai_chess_coach.engine.stockfish_engine import StockfishAnalysis, StockfishEngine
 from ai_chess_coach.models import DetectedEvent, EngineAssessment, VerifiedEvent
 
@@ -30,6 +32,12 @@ class EventVerifier:
             if eval_before is not None and eval_after is not None
             else None
         )
+        eval_delta_for_event_side = _side_aware_delta(eval_delta, event.side)
+        impact_magnitude = (
+            abs(eval_delta_for_event_side)
+            if eval_delta_for_event_side is not None
+            else None
+        )
 
         return VerifiedEvent(
             event=event,
@@ -40,6 +48,8 @@ class EventVerifier:
                 best_move=before_analysis.best_move,
                 principal_variation=before_analysis.principal_variation,
                 depth=before_analysis.depth,
+                eval_delta_for_event_side=eval_delta_for_event_side,
+                impact_magnitude=impact_magnitude,
             ),
         )
 
@@ -49,3 +59,10 @@ def _centipawn_score(analysis: StockfishAnalysis) -> int | None:
         return None
 
     return analysis.score.white().score()
+
+
+def _side_aware_delta(eval_delta: int | None, side: chess.Color) -> int | None:
+    if eval_delta is None:
+        return None
+
+    return eval_delta if side == chess.WHITE else -eval_delta

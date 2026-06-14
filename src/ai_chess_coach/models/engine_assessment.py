@@ -17,3 +17,5 @@ class EngineAssessment:
     best_move: chess.Move | None
     principal_variation: tuple[chess.Move, ...]
     depth: int | None
+    eval_delta_for_event_side: int | None = None
+    impact_magnitude: int | None = None

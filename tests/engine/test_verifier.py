@@ -15,12 +15,13 @@ from ai_chess_coach.models import DetectedEvent, EventMetadata, VerifiedEvent
 
 def make_event(
     *,
+    side: chess.Color = chess.WHITE,
     before_fen: str = chess.STARTING_FEN,
     after_fen: str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
 ) -> DetectedEvent:
     return DetectedEvent(
         event_type="hanging_piece_created",
-        side=chess.WHITE,
+        side=side,
         move=chess.Move.from_uci("e2e4"),
         position=chess.Board(),
         squares=(chess.E4,),
@@ -94,6 +95,53 @@ class EventVerifierTest(unittest.TestCase):
         self.assertEqual(assessment.eval_after, 35)
         self.assertEqual(assessment.eval_delta, 50)
 
+    def test_computes_side_aware_delta_for_white_attributed_event(self) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(-15), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(35), chess.WHITE)),
+        )
+
+        assessment = (
+            EventVerifier(engine).verify(make_event(side=chess.WHITE)).engine_assessment
+        )
+
+        self.assertEqual(assessment.eval_delta, 50)
+        self.assertEqual(assessment.eval_delta_for_event_side, 50)
+        self.assertEqual(assessment.impact_magnitude, 50)
+
+    def test_computes_side_aware_delta_for_black_attributed_event(self) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(-15), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(35), chess.WHITE)),
+        )
+
+        assessment = (
+            EventVerifier(engine).verify(make_event(side=chess.BLACK)).engine_assessment
+        )
+
+        self.assertEqual(assessment.eval_delta, 50)
+        self.assertEqual(assessment.eval_delta_for_event_side, -50)
+        self.assertEqual(assessment.impact_magnitude, 50)
+
+    def test_black_attributed_event_improves_when_white_perspective_delta_is_negative(
+        self,
+    ) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(20), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(-20), chess.WHITE)),
+        )
+
+        assessment = (
+            EventVerifier(engine).verify(make_event(side=chess.BLACK)).engine_assessment
+        )
+
+        self.assertEqual(assessment.eval_delta, -40)
+        self.assertEqual(assessment.eval_delta_for_event_side, 40)
+        self.assertEqual(assessment.impact_magnitude, 40)
+
     def test_copies_best_move_principal_variation_and_depth_from_before_analysis(self) -> None:
         engine = Mock()
         best_move = chess.Move.from_uci("e2e4")
@@ -134,6 +182,8 @@ class EventVerifierTest(unittest.TestCase):
         self.assertIsNone(assessment.eval_before)
         self.assertEqual(assessment.eval_after, 20)
         self.assertIsNone(assessment.eval_delta)
+        self.assertIsNone(assessment.eval_delta_for_event_side)
+        self.assertIsNone(assessment.impact_magnitude)
 
     def test_mate_scores_produce_none_eval_and_delta(self) -> None:
         engine = Mock()
@@ -147,6 +197,8 @@ class EventVerifierTest(unittest.TestCase):
         self.assertIsNone(assessment.eval_before)
         self.assertEqual(assessment.eval_after, 20)
         self.assertIsNone(assessment.eval_delta)
+        self.assertIsNone(assessment.eval_delta_for_event_side)
+        self.assertIsNone(assessment.impact_magnitude)
 
     def test_engine_exceptions_propagate(self) -> None:
         engine = Mock()

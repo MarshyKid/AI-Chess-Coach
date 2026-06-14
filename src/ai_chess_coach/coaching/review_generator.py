@@ -40,6 +40,10 @@ def _sort_key(event: VerifiedEvent) -> tuple[float, str, str]:
 
 
 def _review_score(event: VerifiedEvent) -> float:
+    impact_magnitude = event.engine_assessment.impact_magnitude
+    if impact_magnitude is not None:
+        return float(impact_magnitude)
+
     eval_delta = event.engine_assessment.eval_delta
     if eval_delta is not None:
         return float(abs(eval_delta))

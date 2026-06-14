@@ -18,10 +18,19 @@ def make_verified_event(
     *,
     move_uci: str = "e2e4",
     eval_delta: int | None = 100,
+    impact_magnitude: int | None = None,
     event_severity: float = 1.0,
     after_fen: str = "after-fen",
     squares: tuple[chess.Square, ...] = (chess.E4,),
 ) -> VerifiedEvent:
+    computed_impact_magnitude = (
+        impact_magnitude
+        if impact_magnitude is not None
+        else abs(eval_delta)
+        if eval_delta is not None
+        else None
+    )
+
     return VerifiedEvent(
         event=DetectedEvent(
             event_type=event_type,
@@ -46,6 +55,8 @@ def make_verified_event(
             best_move=None,
             principal_variation=(),
             depth=10,
+            eval_delta_for_event_side=eval_delta,
+            impact_magnitude=computed_impact_magnitude,
         ),
     )
 
@@ -91,13 +102,32 @@ class ReviewGeneratorTest(unittest.TestCase):
 
         self.assertEqual(moment.highlights, (chess.A1, chess.H8))
 
-    def test_events_are_sorted_by_absolute_eval_delta_when_available(self) -> None:
+    def test_events_are_sorted_by_impact_magnitude_when_available(self) -> None:
         low = make_verified_event("fork_missed", eval_delta=50)
         high = make_verified_event("hanging_piece_lost", eval_delta=-200)
 
         moments = ReviewGenerator().generate((low, high))
 
         self.assertEqual([moment.supporting_evidence[0] for moment in moments], [high, low])
+
+    def test_impact_magnitude_takes_precedence_over_raw_eval_delta(self) -> None:
+        raw_eval_larger = make_verified_event(
+            "fork_missed",
+            eval_delta=500,
+            impact_magnitude=25,
+        )
+        impact_larger = make_verified_event(
+            "hanging_piece_lost",
+            eval_delta=50,
+            impact_magnitude=150,
+        )
+
+        moments = ReviewGenerator().generate((raw_eval_larger, impact_larger))
+
+        self.assertEqual(
+            [moment.supporting_evidence[0] for moment in moments],
+            [impact_larger, raw_eval_larger],
+        )
 
     def test_events_without_eval_delta_use_event_severity(self) -> None:
         low = make_verified_event("fork_missed", eval_delta=None, event_severity=0.5)
