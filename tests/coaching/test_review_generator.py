@@ -8,6 +8,7 @@ from ai_chess_coach.models import (
     CoachingMoment,
     DetectedEvent,
     EngineAssessment,
+    EventMetadata,
     VerifiedEvent,
 )
 
@@ -18,7 +19,7 @@ def make_verified_event(
     move_uci: str = "e2e4",
     eval_delta: int | None = 100,
     event_severity: float = 1.0,
-    after_fen: object = "after-fen",
+    after_fen: str = "after-fen",
     squares: tuple[chess.Square, ...] = (chess.E4,),
 ) -> VerifiedEvent:
     return VerifiedEvent(
@@ -28,7 +29,14 @@ def make_verified_event(
             move=chess.Move.from_uci(move_uci),
             position=chess.Board(),
             squares=squares,
-            evidence={"after_fen": after_fen},
+            metadata=EventMetadata(
+                before_fen=chess.STARTING_FEN,
+                after_fen=after_fen,
+                move_uci=move_uci,
+                move_san=move_uci,
+                ply=1,
+            ),
+            evidence={},
             severity=event_severity,
         ),
         engine_assessment=EngineAssessment(
@@ -75,32 +83,6 @@ class ReviewGeneratorTest(unittest.TestCase):
         moment = ReviewGenerator().generate((event,))[0]
 
         self.assertEqual(moment.position_reference, "after-position-fen")
-
-    def test_position_reference_falls_back_to_event_position_fen_when_missing(self) -> None:
-        event = make_verified_event()
-        event = VerifiedEvent(
-            event=DetectedEvent(
-                event_type=event.event.event_type,
-                side=event.event.side,
-                move=event.event.move,
-                position=event.event.position,
-                squares=event.event.squares,
-                evidence={},
-                severity=event.event.severity,
-            ),
-            engine_assessment=event.engine_assessment,
-        )
-
-        moment = ReviewGenerator().generate((event,))[0]
-
-        self.assertEqual(moment.position_reference, event.event.position.fen())
-
-    def test_position_reference_falls_back_when_after_fen_is_not_a_string(self) -> None:
-        event = make_verified_event(after_fen=object())
-
-        moment = ReviewGenerator().generate((event,))[0]
-
-        self.assertEqual(moment.position_reference, event.event.position.fen())
 
     def test_highlights_come_from_event_squares(self) -> None:
         event = make_verified_event(squares=(chess.A1, chess.H8))
@@ -164,6 +146,8 @@ class ReviewGeneratorTest(unittest.TestCase):
         self.assertNotIn("llm", source)
         self.assertNotIn("legal_moves", source)
         self.assertNotIn("attackers", source)
+        self.assertNotIn('evidence["after_fen"]', source)
+        self.assertNotIn('evidence.get("after_fen")', source)
 
     def test_review_generator_is_exported_from_coaching_package(self) -> None:
         import ai_chess_coach.coaching as coaching

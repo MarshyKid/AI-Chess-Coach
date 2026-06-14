@@ -6,7 +6,7 @@ import chess
 
 from ai_chess_coach.detectors.base import BaseDetector
 from ai_chess_coach.features import FeatureStore
-from ai_chess_coach.models import DetectedEvent, MoveTransition, PieceSafety
+from ai_chess_coach.models import DetectedEvent, EventMetadata, MoveTransition, PieceSafety
 
 HANGING_PIECE_CREATED = "hanging_piece_created"
 HANGING_PIECE_IGNORED = "hanging_piece_ignored"
@@ -40,6 +40,7 @@ class HangingPieceDetector(BaseDetector):
                     move=transition.move,
                     position=transition.after_position.copy(stack=False),
                     squares=(square,),
+                    metadata=_event_metadata(transition),
                     evidence=_event_evidence(safety, transition, before_hanging, after_hanging),
                     severity=1.0,
                 )
@@ -61,6 +62,7 @@ class HangingPieceDetector(BaseDetector):
                     move=transition.move,
                     position=transition.before_position.copy(stack=False),
                     squares=(square,),
+                    metadata=_event_metadata(transition),
                     evidence=_event_evidence(safety, transition, before_hanging, after_hanging),
                     severity=1.0,
                 )
@@ -77,6 +79,7 @@ class HangingPieceDetector(BaseDetector):
                         move=transition.move,
                         position=transition.before_position.copy(stack=False),
                         squares=(captured_square,),
+                        metadata=_event_metadata(transition),
                         evidence=_event_evidence(
                             safety,
                             transition,
@@ -127,10 +130,6 @@ def _event_evidence(
         "defenders": tuple(chess.square_name(defender.square) for defender in safety.defenders),
         "before_hanging_squares": _square_names(before_hanging),
         "after_hanging_squares": _square_names(after_hanging),
-        "move_uci": transition.move.uci(),
-        "move_san": transition.san,
-        "before_fen": transition.before_position.fen(),
-        "after_fen": transition.after_position.fen(),
     }
 
     if captured_square is not None:
@@ -139,6 +138,16 @@ def _event_evidence(
         evidence["captured_piece"] = captured_piece.symbol()
 
     return evidence
+
+
+def _event_metadata(transition: MoveTransition) -> EventMetadata:
+    return EventMetadata(
+        before_fen=transition.before_position.fen(),
+        after_fen=transition.after_position.fen(),
+        move_uci=transition.move.uci(),
+        move_san=transition.san,
+        ply=transition.ply,
+    )
 
 
 def _square_names(piece_safety: dict[chess.Square, PieceSafety]) -> tuple[str, ...]:

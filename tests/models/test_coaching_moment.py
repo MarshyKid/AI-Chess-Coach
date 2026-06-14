@@ -9,6 +9,7 @@ from ai_chess_coach.models import (
     DetectedEvent,
     DetectedPattern,
     EngineAssessment,
+    EventMetadata,
     VerifiedEvent,
     WeaknessProfile,
 )
@@ -22,6 +23,13 @@ def make_verified_event() -> VerifiedEvent:
             move=chess.Move.from_uci("e2e4"),
             position=chess.Board(),
             squares=(chess.E4,),
+            metadata=EventMetadata(
+                before_fen=chess.STARTING_FEN,
+                after_fen=chess.Board().fen(),
+                move_uci="e2e4",
+                move_san="e4",
+                ply=1,
+            ),
             evidence={},
             severity=1.0,
         ),

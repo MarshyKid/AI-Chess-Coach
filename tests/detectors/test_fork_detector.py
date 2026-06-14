@@ -29,6 +29,18 @@ def make_transition(fen: str, uci: str) -> MoveTransition:
     )
 
 
+def assert_event_metadata(
+    test_case: unittest.TestCase,
+    event: DetectedEvent,
+    transition: MoveTransition,
+) -> None:
+    test_case.assertEqual(event.metadata.before_fen, transition.before_position.fen())
+    test_case.assertEqual(event.metadata.after_fen, transition.after_position.fen())
+    test_case.assertEqual(event.metadata.move_uci, transition.move.uci())
+    test_case.assertEqual(event.metadata.move_san, transition.san)
+    test_case.assertEqual(event.metadata.ply, transition.ply)
+
+
 def events_of_type(events: list[DetectedEvent], event_type: str) -> list[DetectedEvent]:
     return [event for event in events if event.event_type == event_type]
 
@@ -56,6 +68,7 @@ class ForkDetectorTest(unittest.TestCase):
         self.assertEqual(event.position.fen(), transition.after_position.fen())
         self.assertEqual(event.squares, (chess.D3,))
         self.assertEqual(event.severity, 1.0)
+        assert_event_metadata(self, event, transition)
 
     def test_fork_created_evidence_includes_forking_piece_and_targets(self) -> None:
         transition = make_transition("8/8/8/4k3/5q2/8/5N2/K7 w - - 0 1", "f2d3")
@@ -69,10 +82,10 @@ class ForkDetectorTest(unittest.TestCase):
         self.assertEqual(event.evidence["target_pieces"], ("q", "k"))
         self.assertEqual(event.evidence["forking_move_uci"], "f2d3")
         self.assertEqual(event.evidence["forking_move_san"], "Nd3+")
-        self.assertEqual(event.evidence["move_uci"], "f2d3")
-        self.assertEqual(event.evidence["move_san"], "Nd3+")
-        self.assertEqual(event.evidence["before_fen"], transition.before_position.fen())
-        self.assertEqual(event.evidence["after_fen"], transition.after_position.fen())
+        assert_event_metadata(self, event, transition)
+        self.assertTrue(
+            {"move_uci", "move_san", "before_fen", "after_fen"}.isdisjoint(event.evidence)
+        )
 
     def test_fork_missed_when_player_had_legal_fork_but_chose_another_move(self) -> None:
         transition = make_transition("8/8/8/4k3/5q2/8/5N2/K7 w - - 0 1", "a1a2")
@@ -84,6 +97,7 @@ class ForkDetectorTest(unittest.TestCase):
         self.assertEqual(event.side, chess.WHITE)
         self.assertEqual(event.position.fen(), transition.before_position.fen())
         self.assertEqual(event.squares, (chess.D3,))
+        assert_event_metadata(self, event, transition)
         self.assertEqual(event.evidence["forking_move_uci"], "f2d3")
         self.assertEqual(event.evidence["target_squares"], ("f4", "e5"))
 
@@ -97,6 +111,7 @@ class ForkDetectorTest(unittest.TestCase):
         self.assertEqual(event.side, chess.WHITE)
         self.assertEqual(event.position.fen(), transition.after_position.fen())
         self.assertEqual(event.squares, (chess.D3,))
+        assert_event_metadata(self, event, transition)
         self.assertEqual(event.evidence["forking_piece"], "n")
         self.assertEqual(event.evidence["forking_move_uci"], "f4d3")
         self.assertEqual(event.evidence["forking_move_san"], "Nd3+")
@@ -135,8 +150,10 @@ class ForkDetectorTest(unittest.TestCase):
         self.assertEqual(event.evidence["forking_piece_square"], "d3")
         self.assertEqual(event.evidence["target_squares"], ("f4", "e5"))
         self.assertEqual(event.evidence["target_pieces"], ("q", "k"))
-        self.assertEqual(event.evidence["before_fen"], transition.before_position.fen())
-        self.assertEqual(event.evidence["after_fen"], transition.after_position.fen())
+        assert_event_metadata(self, event, transition)
+        self.assertTrue(
+            {"move_uci", "move_san", "before_fen", "after_fen"}.isdisjoint(event.evidence)
+        )
 
     def test_detector_uses_feature_store_attack_map(self) -> None:
         transition = make_transition(chess.STARTING_FEN, "e2e4")

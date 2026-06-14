@@ -8,7 +8,7 @@ import chess
 
 from ai_chess_coach.detectors.base import BaseDetector
 from ai_chess_coach.features import FeatureStore
-from ai_chess_coach.models import DetectedEvent, MoveTransition
+from ai_chess_coach.models import DetectedEvent, EventMetadata, MoveTransition
 
 KNIGHT_OUTPOST_CREATED = "knight_outpost_created"
 KNIGHT_OUTPOST_MISSED = "knight_outpost_missed"
@@ -50,6 +50,7 @@ class KnightOutpostDetector(BaseDetector):
                     move=transition.move,
                     position=transition.after_position.copy(stack=False),
                     squares=(created_outpost.knight_square,),
+                    metadata=_event_metadata(transition),
                     evidence=_event_evidence(
                         created_outpost,
                         transition,
@@ -74,6 +75,7 @@ class KnightOutpostDetector(BaseDetector):
                         move=transition.move,
                         position=transition.before_position.copy(stack=False),
                         squares=(outpost.knight_square,),
+                        metadata=_event_metadata(transition),
                         evidence=_event_evidence(
                             outpost,
                             transition,
@@ -184,11 +186,17 @@ def _event_evidence(
         "after_outpost_squares": _square_names(after_outposts),
         "outpost_move_uci": outpost_move.uci(),
         "outpost_move_san": _san_for_move(outpost_position, outpost_move, transition),
-        "move_uci": transition.move.uci(),
-        "move_san": transition.san,
-        "before_fen": transition.before_position.fen(),
-        "after_fen": transition.after_position.fen(),
     }
+
+
+def _event_metadata(transition: MoveTransition) -> EventMetadata:
+    return EventMetadata(
+        before_fen=transition.before_position.fen(),
+        after_fen=transition.after_position.fen(),
+        move_uci=transition.move.uci(),
+        move_san=transition.san,
+        ply=transition.ply,
+    )
 
 
 def _is_advanced_outpost_square(square: chess.Square, color: chess.Color) -> bool:

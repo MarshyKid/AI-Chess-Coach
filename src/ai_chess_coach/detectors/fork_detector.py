@@ -8,7 +8,7 @@ import chess
 
 from ai_chess_coach.detectors.base import BaseDetector
 from ai_chess_coach.features import FeatureStore
-from ai_chess_coach.models import DetectedEvent, MoveTransition
+from ai_chess_coach.models import DetectedEvent, EventMetadata, MoveTransition
 
 FORK_CREATED = "fork_created"
 FORK_MISSED = "fork_missed"
@@ -54,6 +54,7 @@ class ForkDetector(BaseDetector):
                     move=transition.move,
                     position=transition.after_position.copy(stack=False),
                     squares=(created_fork.forking_square,),
+                    metadata=_event_metadata(transition),
                     evidence=_event_evidence(
                         created_fork,
                         transition,
@@ -74,6 +75,7 @@ class ForkDetector(BaseDetector):
                         move=transition.move,
                         position=transition.before_position.copy(stack=False),
                         squares=(fork.forking_square,),
+                        metadata=_event_metadata(transition),
                         evidence=_event_evidence(fork, transition, move, transition.before_position),
                         severity=1.0,
                     )
@@ -98,6 +100,7 @@ class ForkDetector(BaseDetector):
                     move=transition.move,
                     position=transition.after_position.copy(stack=False),
                     squares=(fork.forking_square,),
+                    metadata=_event_metadata(transition),
                     evidence=_event_evidence(fork, transition, move, transition.after_position),
                     severity=1.0,
                 )
@@ -198,11 +201,17 @@ def _event_evidence(
         "target_pieces": tuple(piece.symbol() for piece in fork.target_pieces),
         "forking_move_uci": forking_move.uci(),
         "forking_move_san": _san_for_move(forking_position, forking_move, transition),
-        "move_uci": transition.move.uci(),
-        "move_san": transition.san,
-        "before_fen": transition.before_position.fen(),
-        "after_fen": transition.after_position.fen(),
     }
+
+
+def _event_metadata(transition: MoveTransition) -> EventMetadata:
+    return EventMetadata(
+        before_fen=transition.before_position.fen(),
+        after_fen=transition.after_position.fen(),
+        move_uci=transition.move.uci(),
+        move_san=transition.san,
+        ply=transition.ply,
+    )
 
 
 def _san_for_move(

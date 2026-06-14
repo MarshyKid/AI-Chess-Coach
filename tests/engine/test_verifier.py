@@ -7,17 +7,16 @@ import chess
 import chess.engine
 
 from ai_chess_coach.engine import (
-    EventVerificationError,
     EventVerifier,
     StockfishAnalysis,
 )
-from ai_chess_coach.models import DetectedEvent, VerifiedEvent
+from ai_chess_coach.models import DetectedEvent, EventMetadata, VerifiedEvent
 
 
 def make_event(
     *,
-    before_fen: object = chess.STARTING_FEN,
-    after_fen: object = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+    before_fen: str = chess.STARTING_FEN,
+    after_fen: str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
 ) -> DetectedEvent:
     return DetectedEvent(
         event_type="hanging_piece_created",
@@ -25,10 +24,14 @@ def make_event(
         move=chess.Move.from_uci("e2e4"),
         position=chess.Board(),
         squares=(chess.E4,),
-        evidence={
-            "before_fen": before_fen,
-            "after_fen": after_fen,
-        },
+        metadata=EventMetadata(
+            before_fen=before_fen,
+            after_fen=after_fen,
+            move_uci="e2e4",
+            move_san="e4",
+            ply=1,
+        ),
+        evidence={},
         severity=1.0,
     )
 
@@ -145,43 +148,6 @@ class EventVerifierTest(unittest.TestCase):
         self.assertEqual(assessment.eval_after, 20)
         self.assertIsNone(assessment.eval_delta)
 
-    def test_missing_before_fen_raises_event_verification_error(self) -> None:
-        event = make_event()
-        event = DetectedEvent(
-            event_type=event.event_type,
-            side=event.side,
-            move=event.move,
-            position=event.position,
-            squares=event.squares,
-            evidence={"after_fen": event.evidence["after_fen"]},
-            severity=event.severity,
-        )
-
-        with self.assertRaisesRegex(EventVerificationError, "before_fen"):
-            EventVerifier(Mock()).verify(event)
-
-    def test_missing_after_fen_raises_event_verification_error(self) -> None:
-        event = make_event()
-        event = DetectedEvent(
-            event_type=event.event_type,
-            side=event.side,
-            move=event.move,
-            position=event.position,
-            squares=event.squares,
-            evidence={"before_fen": event.evidence["before_fen"]},
-            severity=event.severity,
-        )
-
-        with self.assertRaisesRegex(EventVerificationError, "after_fen"):
-            EventVerifier(Mock()).verify(event)
-
-    def test_non_string_fens_raise_event_verification_error(self) -> None:
-        with self.assertRaisesRegex(EventVerificationError, "before_fen"):
-            EventVerifier(Mock()).verify(make_event(before_fen=object()))
-
-        with self.assertRaisesRegex(EventVerificationError, "after_fen"):
-            EventVerifier(Mock()).verify(make_event(after_fen=object()))
-
     def test_engine_exceptions_propagate(self) -> None:
         engine = Mock()
         engine.evaluate_fen.side_effect = RuntimeError("engine failed")
@@ -211,7 +177,6 @@ class EventVerifierTest(unittest.TestCase):
         import ai_chess_coach.engine as engine
 
         self.assertIs(engine.EventVerifier, EventVerifier)
-        self.assertIs(engine.EventVerificationError, EventVerificationError)
 
     def test_detectors_do_not_import_engine_or_stockfish(self) -> None:
         detector_dir = Path(__file__).parents[2] / "src" / "ai_chess_coach" / "detectors"
@@ -232,3 +197,16 @@ class EventVerifierTest(unittest.TestCase):
 
         self.assertNotIn("openai", source)
         self.assertNotIn("llm", source)
+
+    def test_verifier_source_does_not_read_fens_from_event_evidence(self) -> None:
+        source = (
+            Path(__file__).parents[2]
+            / "src"
+            / "ai_chess_coach"
+            / "engine"
+            / "verifier.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn('evidence["before_fen"]', source)
+        self.assertNotIn('evidence["after_fen"]', source)
+        self.assertNotIn("evidence.get", source)

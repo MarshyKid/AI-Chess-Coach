@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 import chess
 
+from ai_chess_coach.models.event_metadata import EventMetadata
+
 
 @dataclass(frozen=True)
 class DetectedEvent:
@@ -21,5 +23,6 @@ class DetectedEvent:
     move: chess.Move
     position: chess.Board
     squares: tuple[chess.Square, ...]
+    metadata: EventMetadata
     evidence: Mapping[str, object]
     severity: float

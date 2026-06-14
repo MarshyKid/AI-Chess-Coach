@@ -4,7 +4,7 @@ from dataclasses import fields
 import chess
 
 from ai_chess_coach.detectors import BaseDetector, DetectionPipeline, DetectorRegistry
-from ai_chess_coach.models import DetectedEvent, MoveTransition
+from ai_chess_coach.models import DetectedEvent, EventMetadata, MoveTransition
 
 
 def make_transition() -> MoveTransition:
@@ -30,6 +30,13 @@ def make_event(event_type: str, transition: MoveTransition) -> DetectedEvent:
         move=transition.move,
         position=transition.after_position,
         squares=(chess.E4,),
+        metadata=EventMetadata(
+            before_fen=transition.before_position.fen(),
+            after_fen=transition.after_position.fen(),
+            move_uci=transition.move.uci(),
+            move_san=transition.san,
+            ply=transition.ply,
+        ),
         evidence={
             "piece_square": "e4",
             "attackers": (),

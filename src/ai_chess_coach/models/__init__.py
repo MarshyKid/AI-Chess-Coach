@@ -4,6 +4,7 @@ from ai_chess_coach.models.coaching_moment import CoachingMoment
 from ai_chess_coach.models.detected_pattern import DetectedPattern
 from ai_chess_coach.models.detected_event import DetectedEvent
 from ai_chess_coach.models.engine_assessment import EngineAssessment
+from ai_chess_coach.models.event_metadata import EventMetadata
 from ai_chess_coach.models.game_analysis_result import GameAnalysisResult
 from ai_chess_coach.models.move_transition import MoveTransition
 from ai_chess_coach.models.piece_safety import (
@@ -22,6 +23,7 @@ __all__ = [
     "DetectedPattern",
     "DetectedEvent",
     "EngineAssessment",
+    "EventMetadata",
     "GameAnalysisResult",
     "MoveTransition",
     "PieceSafety",

@@ -29,6 +29,18 @@ def make_transition(fen: str, uci: str) -> MoveTransition:
     )
 
 
+def assert_event_metadata(
+    test_case: unittest.TestCase,
+    event: DetectedEvent,
+    transition: MoveTransition,
+) -> None:
+    test_case.assertEqual(event.metadata.before_fen, transition.before_position.fen())
+    test_case.assertEqual(event.metadata.after_fen, transition.after_position.fen())
+    test_case.assertEqual(event.metadata.move_uci, transition.move.uci())
+    test_case.assertEqual(event.metadata.move_san, transition.san)
+    test_case.assertEqual(event.metadata.ply, transition.ply)
+
+
 def events_of_type(events: list[DetectedEvent], event_type: str) -> list[DetectedEvent]:
     return [event for event in events if event.event_type == event_type]
 
@@ -56,6 +68,7 @@ class KnightOutpostDetectorTest(unittest.TestCase):
         self.assertEqual(event.position.fen(), transition.after_position.fen())
         self.assertEqual(event.squares, (chess.D5,))
         self.assertEqual(event.severity, 1.0)
+        assert_event_metadata(self, event, transition)
 
     def test_created_event_evidence_contains_outpost_facts(self) -> None:
         transition = make_transition("7k/8/8/8/4PN2/8/8/K7 w - - 0 1", "f4d5")
@@ -73,10 +86,10 @@ class KnightOutpostDetectorTest(unittest.TestCase):
         self.assertEqual(event.evidence["after_outpost_squares"], ("d5",))
         self.assertEqual(event.evidence["outpost_move_uci"], "f4d5")
         self.assertEqual(event.evidence["outpost_move_san"], "Nd5")
-        self.assertEqual(event.evidence["move_uci"], "f4d5")
-        self.assertEqual(event.evidence["move_san"], "Nd5")
-        self.assertEqual(event.evidence["before_fen"], transition.before_position.fen())
-        self.assertEqual(event.evidence["after_fen"], transition.after_position.fen())
+        assert_event_metadata(self, event, transition)
+        self.assertTrue(
+            {"move_uci", "move_san", "before_fen", "after_fen"}.isdisjoint(event.evidence)
+        )
 
     def test_knight_outpost_missed_when_player_had_legal_outpost_move(self) -> None:
         transition = make_transition("7k/8/8/8/4PN2/8/8/K7 w - - 0 1", "a1a2")
@@ -91,6 +104,7 @@ class KnightOutpostDetectorTest(unittest.TestCase):
         self.assertEqual(event.side, chess.WHITE)
         self.assertEqual(event.position.fen(), transition.before_position.fen())
         self.assertEqual(event.squares, (chess.D5,))
+        assert_event_metadata(self, event, transition)
         self.assertEqual(event.evidence["knight_square"], "d5")
         self.assertEqual(event.evidence["defending_pawn_squares"], ("e4",))
         self.assertEqual(event.evidence["outpost_move_uci"], "f4d5")
@@ -142,10 +156,10 @@ class KnightOutpostDetectorTest(unittest.TestCase):
         self.assertEqual(event.evidence["knight_color"], "white")
         self.assertEqual(event.evidence["defending_pawn_squares"], ("e4",))
         self.assertEqual(event.evidence["enemy_pawn_attack_squares"], ())
-        self.assertEqual(event.evidence["move_uci"], "f4d5")
-        self.assertEqual(event.evidence["move_san"], "Nd5")
-        self.assertEqual(event.evidence["before_fen"], transition.before_position.fen())
-        self.assertEqual(event.evidence["after_fen"], transition.after_position.fen())
+        assert_event_metadata(self, event, transition)
+        self.assertTrue(
+            {"move_uci", "move_san", "before_fen", "after_fen"}.isdisjoint(event.evidence)
+        )
 
     def test_detector_uses_feature_store_defender_and_attack_maps(self) -> None:
         transition = make_transition(chess.STARTING_FEN, "e2e4")

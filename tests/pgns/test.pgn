@@ -1,0 +1,18 @@
+[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2026.06.14"]
+[Round "?"]
+[White "JohannesHeikkonen"]
+[Black "rahul4132"]
+[Result "1-0"]
+[TimeControl "600"]
+[WhiteElo "1225"]
+[BlackElo "1229"]
+[Termination "JohannesHeikkonen won by checkmate"]
+[ECO "C02"]
+[EndTime "7:56:18 GMT+0000"]
+[Link "https://www.chess.com/game/live/170170923732?move=0"]
+
+1. e4 e6 2. d4 d5 3. e5 f6 4. Nf3 fxe5 5. Nxe5 Nf6 6. Nc3 Ne4 7. Nxe4 dxe4 8.
+Bc4 Be7 9. Qg4 O-O 10. Bxe6+ Bxe6 11. Qxe6+ Kh8 12. Nf7+ Rxf7 13. Qxf7 Nc6 14.
+O-O Qxd4 15. Be3 Qxb2 16. Bd4 Qxc2 17. Qxg7# 1-0

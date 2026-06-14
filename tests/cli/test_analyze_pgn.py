@@ -24,6 +24,7 @@ from ai_chess_coach.models import (
     DetectedEvent,
     DetectedPattern,
     EngineAssessment,
+    EventMetadata,
     GameAnalysisResult,
     MoveTransition,
     VerifiedEvent,
@@ -242,10 +243,14 @@ def populated_result() -> GameAnalysisResult:
         move=move,
         position=after_position,
         squares=(chess.E4,),
-        evidence={
-            "before_fen": before_position.fen(),
-            "after_fen": after_position.fen(),
-        },
+        metadata=EventMetadata(
+            before_fen=before_position.fen(),
+            after_fen=after_position.fen(),
+            move_uci=move.uci(),
+            move_san=san,
+            ply=transition.ply,
+        ),
+        evidence={},
         severity=1.5,
     )
     verified_event = VerifiedEvent(

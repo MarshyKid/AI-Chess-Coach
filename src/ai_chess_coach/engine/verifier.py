@@ -7,7 +7,7 @@ from ai_chess_coach.models import DetectedEvent, EngineAssessment, VerifiedEvent
 
 
 class EventVerificationError(ValueError):
-    """Raised when an event cannot be verified because its evidence is malformed."""
+    """Raised when an event cannot be verified because its input is invalid."""
 
 
 class EventVerifier:
@@ -19,8 +19,8 @@ class EventVerifier:
     def verify(self, event: DetectedEvent) -> VerifiedEvent:
         """Attach engine evidence to a detected event."""
 
-        before_fen = _required_fen(event, "before_fen")
-        after_fen = _required_fen(event, "after_fen")
+        before_fen = event.metadata.before_fen
+        after_fen = event.metadata.after_fen
         before_analysis = self.engine.evaluate_fen(before_fen)
         after_analysis = self.engine.evaluate_fen(after_fen)
         eval_before = _centipawn_score(before_analysis)
@@ -42,14 +42,6 @@ class EventVerifier:
                 depth=before_analysis.depth,
             ),
         )
-
-
-def _required_fen(event: DetectedEvent, key: str) -> str:
-    value = event.evidence.get(key)
-    if not isinstance(value, str):
-        raise EventVerificationError(f"DetectedEvent evidence must include string {key!r}.")
-
-    return value
 
 
 def _centipawn_score(analysis: StockfishAnalysis) -> int | None:

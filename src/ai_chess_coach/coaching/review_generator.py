@@ -71,8 +71,4 @@ def _explanation(event: VerifiedEvent) -> str:
 
 
 def _position_reference(event: VerifiedEvent) -> str:
-    after_fen = event.event.evidence.get("after_fen")
-    if isinstance(after_fen, str):
-        return after_fen
-
-    return event.event.position.fen()
+    return event.event.metadata.after_fen

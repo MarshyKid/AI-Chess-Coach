@@ -29,6 +29,18 @@ def make_transition(fen: str, uci: str) -> MoveTransition:
     )
 
 
+def assert_event_metadata(
+    test_case: unittest.TestCase,
+    event: DetectedEvent,
+    transition: MoveTransition,
+) -> None:
+    test_case.assertEqual(event.metadata.before_fen, transition.before_position.fen())
+    test_case.assertEqual(event.metadata.after_fen, transition.after_position.fen())
+    test_case.assertEqual(event.metadata.move_uci, transition.move.uci())
+    test_case.assertEqual(event.metadata.move_san, transition.san)
+    test_case.assertEqual(event.metadata.ply, transition.ply)
+
+
 class HangingPieceDetectorTest(unittest.TestCase):
     def test_detector_inherits_base_detector(self) -> None:
         self.assertIsInstance(HangingPieceDetector(), BaseDetector)
@@ -52,6 +64,7 @@ class HangingPieceDetectorTest(unittest.TestCase):
         self.assertEqual(event.squares, (chess.D3,))
         self.assertEqual(event.position.fen(), transition.after_position.fen())
         self.assertEqual(event.severity, 1.0)
+        assert_event_metadata(self, event, transition)
         self.assertEqual(event.evidence["piece_square"], "d3")
         self.assertEqual(event.evidence["piece"], "B")
         self.assertEqual(event.evidence["piece_color"], "white")
@@ -71,6 +84,7 @@ class HangingPieceDetectorTest(unittest.TestCase):
         self.assertEqual(event.side, chess.WHITE)
         self.assertEqual(event.squares, (chess.D4,))
         self.assertEqual(event.position.fen(), transition.before_position.fen())
+        assert_event_metadata(self, event, transition)
         self.assertEqual(event.evidence["piece_square"], "d4")
         self.assertEqual(event.evidence["piece"], "n")
         self.assertEqual(event.evidence["attackers"], ("d1",))
@@ -89,6 +103,7 @@ class HangingPieceDetectorTest(unittest.TestCase):
         self.assertEqual(event.side, chess.BLACK)
         self.assertEqual(event.squares, (chess.D4,))
         self.assertEqual(event.position.fen(), transition.before_position.fen())
+        assert_event_metadata(self, event, transition)
         self.assertEqual(event.evidence["piece_square"], "d4")
         self.assertEqual(event.evidence["piece"], "n")
         self.assertEqual(event.evidence["captured_square"], "d4")
@@ -123,10 +138,10 @@ class HangingPieceDetectorTest(unittest.TestCase):
         self.assertEqual(event.evidence["piece_color"], "black")
         self.assertEqual(event.evidence["attackers"], ("d1",))
         self.assertEqual(event.evidence["defenders"], ())
-        self.assertEqual(event.evidence["move_uci"], "d1d4")
-        self.assertEqual(event.evidence["move_san"], "Rxd4")
-        self.assertEqual(event.evidence["before_fen"], transition.before_position.fen())
-        self.assertEqual(event.evidence["after_fen"], transition.after_position.fen())
+        assert_event_metadata(self, event, transition)
+        self.assertTrue(
+            {"move_uci", "move_san", "before_fen", "after_fen"}.isdisjoint(event.evidence)
+        )
 
     def test_detector_uses_feature_store_piece_safety_for_before_and_after(self) -> None:
         transition = make_transition(chess.STARTING_FEN, "e2e4")

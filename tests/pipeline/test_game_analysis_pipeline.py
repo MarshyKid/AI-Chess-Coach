@@ -13,6 +13,7 @@ from ai_chess_coach.models import (
     DetectedEvent,
     DetectedPattern,
     EngineAssessment,
+    EventMetadata,
     GameAnalysisResult,
     VerifiedEvent,
     WeaknessProfile,
@@ -263,9 +264,13 @@ def _event_from_transition(transition, event_type: str, severity: float) -> Dete
         move=transition.move,
         position=transition.after_position,
         squares=(transition.move.to_square,),
-        evidence={
-            "before_fen": transition.before_position.fen(),
-            "after_fen": transition.after_position.fen(),
-        },
+        metadata=EventMetadata(
+            before_fen=transition.before_position.fen(),
+            after_fen=transition.after_position.fen(),
+            move_uci=transition.move.uci(),
+            move_san=transition.san,
+            ply=transition.ply,
+        ),
+        evidence={},
         severity=severity,
     )
