@@ -65,29 +65,34 @@ Tie the completed pieces together into a usable backend MVP before expanding bre
 - CLI demo for PGN file analysis
 - Event metadata refactor
 
-## Phase 9 — LLM-Grounded Conversational Coach
+## Phase 9 — Evidence Selection And LLM-Grounded Conversation
 
-Introduce the key product experience: a player can have a conversation with an AI coach. The LLM is allowed to explain and synthesize retrieved evidence, but it must not replace detectors, Stockfish verification, or direct chess analysis.
+Make the coaching output selective before introducing the key product experience: a player can have a conversation with an AI coach. The LLM is allowed to explain and synthesize retrieved/selected evidence, but it must not replace detectors, Stockfish verification, or direct chess analysis.
 
+- Event type metadata and polarity registry
+- Side-aware engine impact
+- Coaching moment selection
 - LLM client abstraction
-- prompt builder over retrieved evidence
+- Prompt builder over retrieved/selected evidence
 - LLM-grounded coach
-- grounding and safety tests
+- Grounding and safety tests
 
-## Phase 10 — Detector Expansion And MVP Hardening
+## Phase 10 — Backend MVP Hardening
 
-After the vertical slice and LLM-grounded conversation are proven, expand chess coverage and harden the backend.
+Harden the backend MVP after the vertical slice, selected coaching moments, and LLM-grounded conversation are proven useful.
 
-- LoosePieceDetector
-- PinDetector
-- BackRankWeaknessDetector
 - Golden PGN regression corpus
-- Backend MVP readiness pass
+- Backend MVP usage docs
+- Architecture boundary tests
+- Stable CLI demo output
 
 ## Later
 
 These should wait until the backend MVP and evidence-grounded coaching loop are useful.
 
+- LoosePieceDetector
+- PinDetector
+- BackRankWeaknessDetector
 - Pawn structure feature foundation
 - PassedPawnDetector
 - more advanced detectors
