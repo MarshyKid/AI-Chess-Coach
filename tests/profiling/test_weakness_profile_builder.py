@@ -164,6 +164,18 @@ class WeaknessProfileBuilderTest(unittest.TestCase):
         self.assertNotIn("openai", source)
         self.assertNotIn("llm", source)
 
+    def test_builder_does_not_define_local_positive_or_negative_event_type_sets(self) -> None:
+        source = (
+            Path(__file__).parents[2]
+            / "src"
+            / "ai_chess_coach"
+            / "profiling"
+            / "weakness_profile_builder.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn("POSITIVE_PATTERN_TYPES", source)
+        self.assertNotIn("NEGATIVE_PATTERN_TYPES", source)
+
     def test_weakness_profile_builder_is_exported_from_profiling_package(self) -> None:
         import ai_chess_coach.profiling as profiling
 

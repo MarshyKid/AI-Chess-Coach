@@ -4,25 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from ai_chess_coach.models import DetectedPattern, WeaknessProfile
-
-NEGATIVE_PATTERN_TYPES = frozenset(
-    {
-        "hanging_piece_created",
-        "hanging_piece_ignored",
-        "hanging_piece_lost",
-        "fork_missed",
-        "fork_allowed",
-        "knight_outpost_missed",
-    }
-)
-
-POSITIVE_PATTERN_TYPES = frozenset(
-    {
-        "fork_created",
-        "knight_outpost_created",
-    }
-)
+from ai_chess_coach.models import DetectedPattern, WeaknessProfile, get_event_type_metadata
 
 
 class WeaknessProfileBuilder:
@@ -35,12 +17,12 @@ class WeaknessProfileBuilder:
             strengths=tuple(
                 pattern
                 for pattern in sorted_patterns
-                if pattern.pattern_type in POSITIVE_PATTERN_TYPES
+                if get_event_type_metadata(pattern.pattern_type).polarity == "positive"
             ),
             weaknesses=tuple(
                 pattern
                 for pattern in sorted_patterns
-                if pattern.pattern_type in NEGATIVE_PATTERN_TYPES
+                if get_event_type_metadata(pattern.pattern_type).polarity == "negative"
             ),
             recurring_themes=tuple(sorted_patterns),
         )
