@@ -1,0 +1,486 @@
+# Tasks 21-31 — Backend MVP And Evidence-Grounded Coaching Roadmap
+
+This file supersedes the older `docs/TASKS_21_30.md` roadmap for the current backend-first phase.
+
+The goal is to keep the project moving one task at a time while preserving the core architecture rule:
+
+```text
+PGN → Replay → MoveTransition → FeatureStore → Detector → DetectedEvent → EngineAssessment → VerifiedEvent → PatternAggregation → WeaknessProfile → Retrieval/Coaching → LLM explains evidence only
+```
+
+The LLM must not do chess correctness. Chess correctness comes from deterministic detectors plus engine verification.
+
+---
+
+## Current Project State
+
+Tasks 1-26D are complete and accepted.
+
+The current backend can:
+
+- load and replay PGNs
+- build `MoveTransition` objects
+- run detectors through the detector pipeline
+- produce `DetectedEvent` objects
+- verify events with Stockfish through the engine layer
+- compute candidate-aware event impact for missed and allowed events
+- aggregate patterns
+- build a weakness profile
+- select coaching moments
+- print a backend-only CLI review
+
+Implemented detectors:
+
+- `HangingPieceDetector`
+- `ForkDetector`
+- `KnightOutpostDetector`
+
+---
+
+## Task 21 — End-to-End Game Analysis Pipeline
+
+Status: complete and accepted
+
+Goal:
+
+Create `GameAnalysisPipeline` to orchestrate PGN replay, detection, verification, pattern aggregation, weakness profiling, and review generation.
+
+Important outcome:
+
+`GameAnalysisResult` preserves all raw pipeline outputs, including raw `verified_events` and selected `coaching_moments`.
+
+---
+
+## Task 22 — CLI Demo For PGN File Analysis
+
+Status: complete and accepted
+
+Goal:
+
+Add a backend-only CLI command for analyzing a PGN file.
+
+Important outcome:
+
+`ai-chess-coach-analyze <file.pgn>` prints detected events, verified events, patterns, weakness profile, and coaching moments.
+
+Rules:
+
+- CLI orchestrates the pipeline only.
+- CLI must not perform chess analysis itself.
+- CLI must not call LLMs.
+
+---
+
+## Task 23 — Event Metadata Refactor
+
+Status: complete and accepted
+
+Goal:
+
+Replace stringly typed FEN and move metadata conventions with `EventMetadata`.
+
+Important outcome:
+
+`DetectedEvent.metadata` stores:
+
+- `before_fen`
+- `after_fen`
+- `move_uci`
+- `move_san`
+- `ply`
+
+---
+
+## Task 24 — Event Type Metadata And Polarity Registry
+
+Status: complete and accepted
+
+Goal:
+
+Centralize event type meaning in `EventTypeMetadata`.
+
+Important outcome:
+
+The registry classifies event types by:
+
+- `event_type`
+- `display_name`
+- `category`
+- `polarity`
+
+Unknown event types are deterministic and neutral.
+
+---
+
+## Task 25 — Side-Aware Engine Impact
+
+Status: complete and accepted
+
+Goal:
+
+Preserve raw White-perspective engine deltas while computing side-aware impact for the attributed event side.
+
+Important outcome:
+
+`EngineAssessment` includes:
+
+- `eval_delta_for_event_side`
+- `impact_magnitude`
+
+`eval_delta` remains raw White-perspective actual-move delta.
+
+---
+
+## Task 26 — Coaching Moment Selection
+
+Status: complete and accepted, later refined by Tasks 26C and 26D
+
+Goal:
+
+Convert many verified events into a smaller number of useful coaching moments by filtering low-impact events, respecting event polarity, and limiting output to the most teachable moments.
+
+Important outcome:
+
+`CoachingMomentSelector` filters events before `ReviewGenerator` creates user-facing `CoachingMoment` objects.
+
+Original grouping behavior was later disabled by Task 26C.
+
+---
+
+## Task 26B — Summary And Detail Rendering For Coaching Moments
+
+Status: complete and accepted
+
+Goal:
+
+Make selected coaching moment output clearer while preserving raw verified evidence.
+
+Important outcome:
+
+`coaching/evidence_formatter.py` formats one deterministic detail line per supporting event.
+
+CLI coaching moments now print:
+
+- title
+- position
+- highlights
+- summary
+- details
+
+No detector semantics, selection logic, engine behavior, or LLM behavior changed in this task.
+
+---
+
+## Task 26C — Individual Coaching Moment Selection
+
+Status: complete and accepted
+
+Goal:
+
+Temporarily remove user-facing grouping so each selected `VerifiedEvent` becomes its own `CoachingMoment`.
+
+Reason:
+
+Grouping same-ply events made debugging difficult and could hide noisy candidate events under broad summaries like:
+
+```text
+Move 16: Multiple fork-related tactical issues
+```
+
+Important outcome:
+
+Each selected group currently contains exactly one `VerifiedEvent`.
+
+Current behavior:
+
+```text
+1 selected VerifiedEvent -> 1 CoachingMoment
+```
+
+Rules preserved:
+
+- skip neutral or unknown events
+- skip missing impact
+- skip low-impact events
+- filter polarity mismatches
+- sort by impact magnitude
+- limit to top moments
+
+---
+
+## Task 26D — Verification Strategy And Candidate-Aware Engine Impact
+
+Status: complete and accepted
+
+Goal:
+
+Refactor engine verification so actual-move, missed-candidate, and allowed-response events get engine evidence that matches what the event represents.
+
+Problem fixed:
+
+Previously, `fork_missed` events inherited the actual move's eval delta. A bad fork-shaped candidate could look like a meaningful missed tactic if the actual move had a large eval swing.
+
+Important model changes:
+
+- `CandidateMove`
+- `DetectedEvent.candidate_move`
+- `EventTypeMetadata.verification_kind`
+- `EngineAssessment.candidate_eval_after`
+- `EngineAssessment.candidate_move_uci`
+- `EngineAssessment.candidate_after_fen`
+- `EngineAssessment.event_impact_for_side`
+
+Verification kinds:
+
+```text
+actual_move       -> before_fen vs after_fen
+missed_candidate  -> actual_after vs candidate_after from before_fen
+allowed_response  -> actual_after vs opponent candidate_after from after_fen
+```
+
+Canonical coaching field:
+
+```text
+event_impact_for_side
+```
+
+Selector behavior:
+
+- positive event types require `event_impact_for_side > 0`
+- negative event types require `event_impact_for_side < 0`
+- `impact_magnitude = abs(event_impact_for_side)` when available
+
+Rules:
+
+- Detectors still do not call Stockfish.
+- Engine verifier remains the only Stockfish boundary.
+- Selector remains chess-agnostic.
+- Review/LLM explain verified evidence only.
+
+---
+
+## Task 27 — LLM Client And Prompt Builder
+
+Status: next planned task
+
+Dependencies:
+
+- Tasks 21-26D
+
+Goal:
+
+Prepare the LLM integration boundary without letting the LLM perform chess analysis.
+
+Files to create or update:
+
+```text
+src/ai_chess_coach/coaching/llm_client.py
+src/ai_chess_coach/coaching/prompt_builder.py
+tests/coaching/test_llm_client.py
+tests/coaching/test_prompt_builder.py
+```
+
+Deliverables:
+
+- `LLMClient` protocol or abstraction
+- `PromptBuilder` for evidence-grounded coaching prompts
+
+Acceptance criteria:
+
+- Prompt builder accepts selected structured evidence only, such as:
+  - user question
+  - retrieved verified events
+  - detected patterns
+  - weakness profile data
+  - selected coaching moments
+- Prompt explicitly instructs the LLM to use only supplied evidence.
+- Prompt explicitly forbids raw chess analysis, move calculation, and unsupported claims.
+- Prompt treats selected coaching moments as the primary user-facing teaching points.
+- LLM client can be mocked in tests.
+- Tests pass.
+
+Rules / non-goals:
+
+- Do not call a real LLM in unit tests.
+- Do not send raw PGNs to the LLM.
+- Do not ask the LLM to analyze chess positions.
+- Do not call Stockfish.
+- Do not add frontend, database, auth, deployment, or persistence.
+
+---
+
+## Task 28 — LLM-Grounded Conversational Coach
+
+Status: planned
+
+Dependencies:
+
+- Task 27
+
+Goal:
+
+Create the first evidence-grounded AI coach that can answer player questions conversationally using retrieved and selected evidence.
+
+Files to create or update:
+
+```text
+src/ai_chess_coach/coaching/llm_chat_coach.py
+tests/coaching/test_llm_chat_coach.py
+```
+
+Acceptance criteria:
+
+- Accepts a user question and retrieved or selected evidence.
+- Uses `PromptBuilder` to construct a grounded prompt.
+- Calls an injected `LLMClient` abstraction.
+- Returns the LLM response.
+- Tests use a fake or mock LLM client.
+- Tests verify selected coaching moments and retrieved evidence are included in the prompt.
+- Tests verify raw PGNs are rejected or not accepted.
+
+Rules / non-goals:
+
+- LLM must not receive raw PGNs.
+- LLM must not replace detectors.
+- LLM must not call Stockfish.
+- LLM must not perform direct chess analysis.
+- LLM should explain and synthesize retrieved or selected evidence only.
+- No frontend, database, auth, deployment, or persistence.
+
+---
+
+## Task 29 — LLM Grounding And Safety Tests
+
+Status: planned
+
+Dependencies:
+
+- Task 28
+
+Goal:
+
+Add guardrail tests that protect the product architecture before adding more detectors or frontend work.
+
+Files to create or update:
+
+```text
+tests/coaching/test_llm_grounding.py
+docs/LLM_GROUNDING.md
+```
+
+Acceptance criteria:
+
+- Tests verify prompts include retrieved evidence.
+- Tests verify prompts include selected coaching moments rather than dumping all raw events by default.
+- Tests verify prompts instruct the LLM not to analyze raw PGNs.
+- Tests verify prompts instruct the LLM not to invent unsupported chess claims.
+- Tests verify prompts distinguish evidence from user question text.
+- Documentation explains that the LLM is a communicator, not the chess analysis engine.
+
+Rules / non-goals:
+
+- Do not call a real LLM in tests.
+- Do not add prompt evaluation infrastructure beyond simple deterministic tests.
+- Do not add frontend, persistence, auth, or deployment.
+
+---
+
+## Task 30 — Golden PGN Regression Corpus And Backend MVP Readiness
+
+Status: planned
+
+Dependencies:
+
+- Tasks 21-29
+
+Goal:
+
+Harden the backend MVP after the vertical slice, event selection, candidate-aware verification, and LLM-grounded conversation loop are in place.
+
+Files to create or update:
+
+```text
+tests/fixtures/pgns/*.pgn
+tests/pipeline/test_golden_pgns.py
+docs/TESTING.md
+docs/MVP_USAGE.md
+```
+
+Acceptance criteria:
+
+- Full pipeline produces stable outputs for representative games covering:
+  - hanging pieces
+  - forks
+  - outposts
+- Tests verify noisy raw events are reduced to selected coaching moments.
+- Tests verify selected coaching moments are side-aware, polarity-aware, and candidate-aware.
+- One documented command analyzes a PGN file end-to-end.
+- Tests verify detectors remain engine-free.
+- Tests verify coaching remains evidence-grounded.
+- Tests verify LLM calls, if configured, use selected or retrieved evidence only.
+
+Rules / non-goals:
+
+- Do not add frontend.
+- Do not add database or persistence.
+- Do not add auth.
+- Do not add deployment.
+- Do not add additional detectors in this task.
+
+---
+
+## Task 31 — Detector Expansion Readiness
+
+Status: planned after backend MVP readiness
+
+Dependencies:
+
+- Task 30
+- `docs/ADDING_DETECTORS.md`
+
+Goal:
+
+Prepare for adding new detectors without weakening architecture boundaries or duplicating chess logic.
+
+Candidate future detectors:
+
+- `LoosePieceDetector`
+- `PinDetector`
+- `SkewerDetector`
+- `BackRankWeaknessDetector`
+- pawn structure foundations
+- `PassedPawnDetector`
+- more advanced motif detectors
+
+Recommended process:
+
+1. Read `docs/ADDING_DETECTORS.md`.
+2. Add one detector at a time.
+3. Define event types before coding.
+4. Register event metadata, including polarity and verification kind.
+5. Decide whether events are actual-move, missed-candidate, or allowed-response.
+6. Add typed `CandidateMove` only for counterfactual events.
+7. Add detector tests before expanding review behavior.
+8. Keep detectors deterministic, engine-free, and LLM-free.
+
+Rules / non-goals:
+
+- Do not add multiple detectors in one task.
+- Do not make detectors call Stockfish.
+- Do not make detectors generate coaching prose.
+- Do not bypass `FeatureStore` when reusable features exist.
+- Do not make selector or review code perform chess analysis.
+- Do not add frontend, database, auth, deployment, or persistence as part of detector work.
+
+---
+
+## Later
+
+These remain intentionally deferred until the backend MVP and evidence-grounded conversation loop are useful:
+
+- More detectors
+- FastAPI/backend API
+- Persistence/database for user history
+- Frontend
+- Auth
+- Deployment
