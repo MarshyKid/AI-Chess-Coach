@@ -7,7 +7,7 @@ import chess
 
 import ai_chess_coach.detectors.fork_detector as fork_detector
 from ai_chess_coach.detectors import BaseDetector, ForkDetector
-from ai_chess_coach.models import DetectedEvent, MoveTransition
+from ai_chess_coach.models import CandidateMove, DetectedEvent, MoveTransition
 
 
 def make_transition(fen: str, uci: str) -> MoveTransition:
@@ -79,6 +79,7 @@ class ForkDetectorTest(unittest.TestCase):
         self.assertEqual(event.evidence["forking_piece"], "N")
         self.assertEqual(event.evidence["forking_piece_color"], "white")
         self.assertEqual(event.evidence["target_squares"], ("f4", "e5"))
+        self.assertIsNone(event.candidate_move)
         self.assertEqual(event.evidence["target_pieces"], ("q", "k"))
         self.assertEqual(event.evidence["forking_move_uci"], "f2d3")
         self.assertEqual(event.evidence["forking_move_san"], "Nd3+")
@@ -100,6 +101,11 @@ class ForkDetectorTest(unittest.TestCase):
         assert_event_metadata(self, event, transition)
         self.assertEqual(event.evidence["forking_move_uci"], "f2d3")
         self.assertEqual(event.evidence["target_squares"], ("f4", "e5"))
+        self.assertIsInstance(event.candidate_move, CandidateMove)
+        self.assertEqual(event.candidate_move.move_uci, "f2d3")
+        self.assertEqual(event.candidate_move.move_san, "Nd3+")
+        self.assertEqual(event.candidate_move.start_fen, transition.before_position.fen())
+        self.assertEqual(event.candidate_move.side, transition.before_position.turn)
 
     def test_fork_allowed_when_move_gives_opponent_new_fork_opportunity(self) -> None:
         transition = make_transition("7k/8/8/8/5n2/8/1K6/5Q2 w - - 0 1", "f1f2")
@@ -117,6 +123,11 @@ class ForkDetectorTest(unittest.TestCase):
         self.assertEqual(event.evidence["forking_move_san"], "Nd3+")
         self.assertEqual(event.evidence["target_squares"], ("b2", "f2"))
         self.assertEqual(event.evidence["target_pieces"], ("K", "Q"))
+        self.assertIsInstance(event.candidate_move, CandidateMove)
+        self.assertEqual(event.candidate_move.move_uci, "f4d3")
+        self.assertEqual(event.candidate_move.move_san, "Nd3+")
+        self.assertEqual(event.candidate_move.start_fen, transition.after_position.fen())
+        self.assertEqual(event.candidate_move.side, transition.after_position.turn)
 
     def test_pawns_are_not_counted_as_valuable_fork_targets(self) -> None:
         transition = make_transition("7k/8/8/4p3/5p2/8/5N2/K7 w - - 0 1", "f2d3")

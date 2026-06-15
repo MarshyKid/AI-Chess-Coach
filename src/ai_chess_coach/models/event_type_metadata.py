@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 EventPolarity = Literal["positive", "negative", "neutral"]
+VerificationKind = Literal["actual_move", "missed_candidate", "allowed_response"]
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,7 @@ class EventTypeMetadata:
     display_name: str
     category: str
     polarity: EventPolarity
+    verification_kind: VerificationKind = "actual_move"
 
 
 _EVENT_TYPE_METADATA = {
@@ -50,12 +52,14 @@ _EVENT_TYPE_METADATA = {
             display_name="Fork Missed",
             category="tactics",
             polarity="negative",
+            verification_kind="missed_candidate",
         ),
         EventTypeMetadata(
             event_type="fork_allowed",
             display_name="Fork Allowed",
             category="tactics",
             polarity="negative",
+            verification_kind="allowed_response",
         ),
         EventTypeMetadata(
             event_type="knight_outpost_created",
@@ -68,6 +72,7 @@ _EVENT_TYPE_METADATA = {
             display_name="Knight Outpost Missed",
             category="positional",
             polarity="negative",
+            verification_kind="missed_candidate",
         ),
     )
 }

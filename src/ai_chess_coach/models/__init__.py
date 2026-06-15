@@ -1,5 +1,6 @@
 """Core domain models for AI Chess Coach."""
 
+from ai_chess_coach.models.candidate_move import CandidateMove
 from ai_chess_coach.models.coaching_moment import CoachingMoment
 from ai_chess_coach.models.detected_pattern import DetectedPattern
 from ai_chess_coach.models.detected_event import DetectedEvent
@@ -8,6 +9,7 @@ from ai_chess_coach.models.event_metadata import EventMetadata
 from ai_chess_coach.models.event_type_metadata import (
     EventPolarity,
     EventTypeMetadata,
+    VerificationKind,
     get_event_type_metadata,
     registered_event_type_metadata,
 )
@@ -24,6 +26,7 @@ from ai_chess_coach.models.weakness_profile import WeaknessProfile
 
 __all__ = [
     "AttackerInfo",
+    "CandidateMove",
     "CoachingMoment",
     "DefenderInfo",
     "DetectedPattern",
@@ -37,6 +40,7 @@ __all__ = [
     "PieceSafety",
     "PositionAnalysis",
     "VerifiedEvent",
+    "VerificationKind",
     "WeaknessProfile",
     "get_event_type_metadata",
     "registered_event_type_metadata",

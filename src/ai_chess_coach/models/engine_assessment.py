@@ -19,3 +19,7 @@ class EngineAssessment:
     depth: int | None
     eval_delta_for_event_side: int | None = None
     impact_magnitude: int | None = None
+    candidate_eval_after: int | None = None
+    candidate_move_uci: str | None = None
+    candidate_after_fen: str | None = None
+    event_impact_for_side: int | None = None

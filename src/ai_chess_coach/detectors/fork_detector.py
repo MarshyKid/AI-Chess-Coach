@@ -8,7 +8,12 @@ import chess
 
 from ai_chess_coach.detectors.base import BaseDetector
 from ai_chess_coach.features import FeatureStore
-from ai_chess_coach.models import DetectedEvent, EventMetadata, MoveTransition
+from ai_chess_coach.models import (
+    CandidateMove,
+    DetectedEvent,
+    EventMetadata,
+    MoveTransition,
+)
 
 FORK_CREATED = "fork_created"
 FORK_MISSED = "fork_missed"
@@ -78,6 +83,7 @@ class ForkDetector(BaseDetector):
                         metadata=_event_metadata(transition),
                         evidence=_event_evidence(fork, transition, move, transition.before_position),
                         severity=1.0,
+                        candidate_move=_candidate_move(move, transition.before_position, transition),
                     )
                 )
 
@@ -103,6 +109,7 @@ class ForkDetector(BaseDetector):
                     metadata=_event_metadata(transition),
                     evidence=_event_evidence(fork, transition, move, transition.after_position),
                     severity=1.0,
+                    candidate_move=_candidate_move(move, transition.after_position, transition),
                 )
             )
 
@@ -211,6 +218,19 @@ def _event_metadata(transition: MoveTransition) -> EventMetadata:
         move_uci=transition.move.uci(),
         move_san=transition.san,
         ply=transition.ply,
+    )
+
+
+def _candidate_move(
+    move: chess.Move,
+    board: chess.Board,
+    transition: MoveTransition,
+) -> CandidateMove:
+    return CandidateMove(
+        move_uci=move.uci(),
+        move_san=_san_for_move(board, move, transition),
+        start_fen=board.fen(),
+        side=board.turn,
     )
 
 

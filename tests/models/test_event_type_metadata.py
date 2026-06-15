@@ -3,19 +3,25 @@ from dataclasses import FrozenInstanceError
 
 from ai_chess_coach.models import (
     EventTypeMetadata,
+    VerificationKind,
     get_event_type_metadata,
     registered_event_type_metadata,
 )
 
 EXPECTED_METADATA = {
-    "hanging_piece_created": ("Hanging Piece Created", "piece_safety", "negative"),
-    "hanging_piece_ignored": ("Hanging Piece Ignored", "piece_safety", "negative"),
-    "hanging_piece_lost": ("Hanging Piece Lost", "piece_safety", "negative"),
-    "fork_created": ("Fork Created", "tactics", "positive"),
-    "fork_missed": ("Fork Missed", "tactics", "negative"),
-    "fork_allowed": ("Fork Allowed", "tactics", "negative"),
-    "knight_outpost_created": ("Knight Outpost Created", "positional", "positive"),
-    "knight_outpost_missed": ("Knight Outpost Missed", "positional", "negative"),
+    "hanging_piece_created": ("Hanging Piece Created", "piece_safety", "negative", "actual_move"),
+    "hanging_piece_ignored": ("Hanging Piece Ignored", "piece_safety", "negative", "actual_move"),
+    "hanging_piece_lost": ("Hanging Piece Lost", "piece_safety", "negative", "actual_move"),
+    "fork_created": ("Fork Created", "tactics", "positive", "actual_move"),
+    "fork_missed": ("Fork Missed", "tactics", "negative", "missed_candidate"),
+    "fork_allowed": ("Fork Allowed", "tactics", "negative", "allowed_response"),
+    "knight_outpost_created": ("Knight Outpost Created", "positional", "positive", "actual_move"),
+    "knight_outpost_missed": (
+        "Knight Outpost Missed",
+        "positional",
+        "negative",
+        "missed_candidate",
+    ),
 }
 
 
@@ -26,12 +32,14 @@ class EventTypeMetadataTest(unittest.TestCase):
             display_name="Fork Created",
             category="tactics",
             polarity="positive",
+            verification_kind="actual_move",
         )
 
         self.assertEqual(metadata.event_type, "fork_created")
         self.assertEqual(metadata.display_name, "Fork Created")
         self.assertEqual(metadata.category, "tactics")
         self.assertEqual(metadata.polarity, "positive")
+        self.assertEqual(metadata.verification_kind, "actual_move")
 
     def test_model_is_frozen(self) -> None:
         metadata = EventTypeMetadata(
@@ -51,6 +59,7 @@ class EventTypeMetadataTest(unittest.TestCase):
         self.assertIs(models.get_event_type_metadata, get_event_type_metadata)
         self.assertIs(models.registered_event_type_metadata, registered_event_type_metadata)
         self.assertTrue(hasattr(models, "EventPolarity"))
+        self.assertTrue(hasattr(models, "VerificationKind"))
 
     def test_all_current_event_types_are_registered(self) -> None:
         registered_event_types = {
@@ -60,7 +69,12 @@ class EventTypeMetadataTest(unittest.TestCase):
         self.assertEqual(registered_event_types, set(EXPECTED_METADATA))
 
     def test_registered_metadata_has_expected_values(self) -> None:
-        for event_type, (display_name, category, polarity) in EXPECTED_METADATA.items():
+        for event_type, (
+            display_name,
+            category,
+            polarity,
+            verification_kind,
+        ) in EXPECTED_METADATA.items():
             with self.subTest(event_type=event_type):
                 metadata = get_event_type_metadata(event_type)
 
@@ -68,6 +82,7 @@ class EventTypeMetadataTest(unittest.TestCase):
                 self.assertEqual(metadata.display_name, display_name)
                 self.assertEqual(metadata.category, category)
                 self.assertEqual(metadata.polarity, polarity)
+                self.assertEqual(metadata.verification_kind, verification_kind)
 
     def test_registered_metadata_is_returned_sorted_by_event_type(self) -> None:
         event_types = [
@@ -83,3 +98,7 @@ class EventTypeMetadataTest(unittest.TestCase):
         self.assertEqual(metadata.display_name, "Time Pressure Pattern")
         self.assertEqual(metadata.category, "unknown")
         self.assertEqual(metadata.polarity, "neutral")
+        self.assertEqual(metadata.verification_kind, "actual_move")
+
+    def test_verification_kind_type_is_exported(self) -> None:
+        self.assertIsNotNone(VerificationKind)

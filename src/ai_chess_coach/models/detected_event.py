@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 import chess
 
+from ai_chess_coach.models.candidate_move import CandidateMove
 from ai_chess_coach.models.event_metadata import EventMetadata
 
 
@@ -26,3 +27,4 @@ class DetectedEvent:
     metadata: EventMetadata
     evidence: Mapping[str, object]
     severity: float
+    candidate_move: CandidateMove | None = None

@@ -19,8 +19,10 @@ def make_verified_event(
     move_uci: str = "e2e4",
     eval_delta: int | None = -100,
     eval_delta_for_event_side: int | None = None,
+    event_impact_for_side: int | None = None,
     impact_magnitude: int | None = None,
     event_severity: float = 1.0,
+    before_fen: str = chess.STARTING_FEN,
     after_fen: str = "after-fen",
     squares: tuple[chess.Square, ...] = (chess.E4,),
 ) -> VerifiedEvent:
@@ -29,11 +31,16 @@ def make_verified_event(
         if eval_delta_for_event_side is not None
         else eval_delta
     )
+    computed_event_impact_for_side = (
+        event_impact_for_side
+        if event_impact_for_side is not None
+        else computed_eval_delta_for_event_side
+    )
     computed_impact_magnitude = (
         impact_magnitude
         if impact_magnitude is not None
-        else abs(computed_eval_delta_for_event_side)
-        if computed_eval_delta_for_event_side is not None
+        else abs(computed_event_impact_for_side)
+        if computed_event_impact_for_side is not None
         else None
     )
 
@@ -45,7 +52,7 @@ def make_verified_event(
             position=chess.Board(),
             squares=squares,
             metadata=EventMetadata(
-                before_fen=chess.STARTING_FEN,
+                before_fen=before_fen,
                 after_fen=after_fen,
                 move_uci=move_uci,
                 move_san=move_uci,
@@ -63,6 +70,7 @@ def make_verified_event(
             depth=10,
             eval_delta_for_event_side=computed_eval_delta_for_event_side,
             impact_magnitude=computed_impact_magnitude,
+            event_impact_for_side=computed_event_impact_for_side,
         ),
     )
 
@@ -88,8 +96,8 @@ class ReviewGeneratorTest(unittest.TestCase):
         moment = ReviewGenerator().generate((event,))[0]
 
         self.assertEqual(moment.title, "Move 1: Piece safety issue")
-        self.assertIn("Hanging Piece Created", moment.explanation)
-        self.assertIn("-125 centipawns", moment.explanation)
+        self.assertIn("harmful for the event side", moment.explanation)
+        self.assertIn("125 centipawns", moment.explanation)
         self.assertEqual(moment.supporting_evidence, (event,))
         self.assertEqual(moment.position_reference, "verified-after-fen")
         self.assertEqual(moment.highlights, (chess.C4, chess.D5))
@@ -100,6 +108,17 @@ class ReviewGeneratorTest(unittest.TestCase):
         moment = ReviewGenerator().generate((event,))[0]
 
         self.assertEqual(moment.position_reference, "after-position-fen")
+
+    def test_missed_candidate_position_reference_uses_before_fen(self) -> None:
+        event = make_verified_event(
+            "fork_missed",
+            before_fen="before-position-fen",
+            after_fen="after-position-fen",
+        )
+
+        moment = ReviewGenerator().generate((event,))[0]
+
+        self.assertEqual(moment.position_reference, "before-position-fen")
 
     def test_highlights_come_from_event_squares(self) -> None:
         event = make_verified_event(squares=(chess.A1, chess.H8))
@@ -186,6 +205,34 @@ class ReviewGeneratorTest(unittest.TestCase):
             all(len(moment.supporting_evidence) == 1 for moment in moments)
         )
 
+    def test_missed_candidate_summary_uses_candidate_impact_wording(self) -> None:
+        event = make_verified_event(
+            "fork_missed",
+            event_impact_for_side=-220,
+            impact_magnitude=220,
+        )
+
+        moment = ReviewGenerator().generate((event,))[0]
+
+        self.assertEqual(
+            moment.explanation,
+            "The candidate move was about 220 centipawns better than the move played.",
+        )
+
+    def test_allowed_response_summary_uses_opponent_reply_wording(self) -> None:
+        event = make_verified_event(
+            "fork_allowed",
+            event_impact_for_side=-300,
+            impact_magnitude=300,
+        )
+
+        moment = ReviewGenerator().generate((event,))[0]
+
+        self.assertEqual(
+            moment.explanation,
+            "After this move, the opponent had a reply worth about 300 centipawns.",
+        )
+
     def test_titles_do_not_use_multiple_event_wording(self) -> None:
         first = make_verified_event("fork_missed", move_uci="g1f3")
         second = make_verified_event("fork_allowed", move_uci="b1c3")
@@ -227,6 +274,7 @@ class ReviewGeneratorTest(unittest.TestCase):
         self.assertNotIn("llm", source)
         self.assertNotIn("legal_moves", source)
         self.assertNotIn("attackers", source)
+        self.assertNotIn("featurestore", source)
         self.assertNotIn('evidence["after_fen"]', source)
         self.assertNotIn('evidence.get("after_fen")', source)
 

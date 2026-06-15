@@ -8,7 +8,12 @@ import chess
 
 from ai_chess_coach.detectors.base import BaseDetector
 from ai_chess_coach.features import FeatureStore
-from ai_chess_coach.models import DetectedEvent, EventMetadata, MoveTransition
+from ai_chess_coach.models import (
+    CandidateMove,
+    DetectedEvent,
+    EventMetadata,
+    MoveTransition,
+)
 
 KNIGHT_OUTPOST_CREATED = "knight_outpost_created"
 KNIGHT_OUTPOST_MISSED = "knight_outpost_missed"
@@ -85,6 +90,11 @@ class KnightOutpostDetector(BaseDetector):
                             after_outposts,
                         ),
                         severity=1.0,
+                        candidate_move=_candidate_move(
+                            move,
+                            transition.before_position,
+                            transition,
+                        ),
                     )
                 )
 
@@ -196,6 +206,19 @@ def _event_metadata(transition: MoveTransition) -> EventMetadata:
         move_uci=transition.move.uci(),
         move_san=transition.san,
         ply=transition.ply,
+    )
+
+
+def _candidate_move(
+    move: chess.Move,
+    board: chess.Board,
+    transition: MoveTransition,
+) -> CandidateMove:
+    return CandidateMove(
+        move_uci=move.uci(),
+        move_san=_san_for_move(board, move, transition),
+        start_fen=board.fen(),
+        side=board.turn,
     )
 
 

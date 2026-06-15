@@ -102,6 +102,7 @@ class SelectingFakeEventVerifier:
                 depth=1,
                 eval_delta_for_event_side=side_delta,
                 impact_magnitude=abs(side_delta),
+                event_impact_for_side=side_delta,
             ),
         )
 

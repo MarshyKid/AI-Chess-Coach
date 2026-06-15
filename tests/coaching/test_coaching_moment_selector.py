@@ -21,8 +21,14 @@ def make_verified_event(
     move_uci: str = "e2e4",
     squares: tuple[chess.Square, ...] = (chess.E4,),
     eval_delta_for_event_side: int | None = -100,
+    event_impact_for_side: int | None = None,
     impact_magnitude: int | None = 100,
 ) -> VerifiedEvent:
+    computed_event_impact_for_side = (
+        event_impact_for_side
+        if event_impact_for_side is not None
+        else eval_delta_for_event_side
+    )
     return VerifiedEvent(
         event=DetectedEvent(
             event_type=event_type,
@@ -49,6 +55,7 @@ def make_verified_event(
             depth=10,
             eval_delta_for_event_side=eval_delta_for_event_side,
             impact_magnitude=impact_magnitude,
+            event_impact_for_side=computed_event_impact_for_side,
         ),
     )
 
@@ -78,6 +85,20 @@ class CoachingMomentSelectorTest(unittest.TestCase):
 
         self.assertEqual(len(groups), 1)
         self.assertEqual(groups[0].events, (kept,))
+
+    def test_selector_uses_event_impact_for_polarity_not_actual_move_delta(
+        self,
+    ) -> None:
+        event = make_verified_event(
+            "fork_missed",
+            eval_delta_for_event_side=-500,
+            event_impact_for_side=100,
+            impact_magnitude=100,
+        )
+
+        groups = CoachingMomentSelector().select((event,))
+
+        self.assertEqual(groups, ())
 
     def test_negative_events_are_kept_only_when_they_hurt_event_side(self) -> None:
         kept = make_verified_event(
@@ -213,3 +234,4 @@ class CoachingMomentSelectorTest(unittest.TestCase):
         self.assertNotIn("llm", source)
         self.assertNotIn("legal_moves", source)
         self.assertNotIn("attackers", source)
+        self.assertNotIn("featurestore", source)

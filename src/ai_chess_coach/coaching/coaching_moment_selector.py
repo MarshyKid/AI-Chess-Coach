@@ -56,17 +56,17 @@ class CoachingMomentSelector:
             if impact_magnitude is None or impact_magnitude < self.min_impact_centipawns:
                 continue
 
-            eval_delta_for_event_side = event.engine_assessment.eval_delta_for_event_side
-            if eval_delta_for_event_side is None:
+            event_impact_for_side = event.engine_assessment.event_impact_for_side
+            if event_impact_for_side is None:
                 continue
             if (
                 event_type_metadata.polarity == "positive"
-                and eval_delta_for_event_side <= 0
+                and event_impact_for_side <= 0
             ):
                 continue
             if (
                 event_type_metadata.polarity == "negative"
-                and eval_delta_for_event_side >= 0
+                and event_impact_for_side >= 0
             ):
                 continue
 

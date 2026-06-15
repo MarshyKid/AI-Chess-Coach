@@ -7,7 +7,7 @@ import chess
 
 import ai_chess_coach.detectors.knight_outpost_detector as knight_outpost_detector
 from ai_chess_coach.detectors import BaseDetector, KnightOutpostDetector
-from ai_chess_coach.models import DetectedEvent, MoveTransition
+from ai_chess_coach.models import CandidateMove, DetectedEvent, MoveTransition
 
 
 def make_transition(fen: str, uci: str) -> MoveTransition:
@@ -86,6 +86,7 @@ class KnightOutpostDetectorTest(unittest.TestCase):
         self.assertEqual(event.evidence["after_outpost_squares"], ("d5",))
         self.assertEqual(event.evidence["outpost_move_uci"], "f4d5")
         self.assertEqual(event.evidence["outpost_move_san"], "Nd5")
+        self.assertIsNone(event.candidate_move)
         assert_event_metadata(self, event, transition)
         self.assertTrue(
             {"move_uci", "move_san", "before_fen", "after_fen"}.isdisjoint(event.evidence)
@@ -109,6 +110,11 @@ class KnightOutpostDetectorTest(unittest.TestCase):
         self.assertEqual(event.evidence["defending_pawn_squares"], ("e4",))
         self.assertEqual(event.evidence["outpost_move_uci"], "f4d5")
         self.assertEqual(event.evidence["outpost_move_san"], "Nd5")
+        self.assertIsInstance(event.candidate_move, CandidateMove)
+        self.assertEqual(event.candidate_move.move_uci, "f4d5")
+        self.assertEqual(event.candidate_move.move_san, "Nd5")
+        self.assertEqual(event.candidate_move.start_fen, transition.before_position.fen())
+        self.assertEqual(event.candidate_move.side, transition.before_position.turn)
 
     def test_no_outpost_when_knight_is_not_defended_by_friendly_pawn(self) -> None:
         transition = make_transition("7k/8/8/8/5N2/8/8/K7 w - - 0 1", "f4d5")

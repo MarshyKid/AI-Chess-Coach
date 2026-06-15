@@ -7,33 +7,39 @@ import chess
 import chess.engine
 
 from ai_chess_coach.engine import (
+    EventVerificationError,
     EventVerifier,
     StockfishAnalysis,
 )
-from ai_chess_coach.models import DetectedEvent, EventMetadata, VerifiedEvent
+from ai_chess_coach.models import CandidateMove, DetectedEvent, EventMetadata, VerifiedEvent
 
 
 def make_event(
     *,
+    event_type: str = "hanging_piece_created",
     side: chess.Color = chess.WHITE,
     before_fen: str = chess.STARTING_FEN,
     after_fen: str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+    move_uci: str = "e2e4",
+    move_san: str = "e4",
+    candidate_move: CandidateMove | None = None,
 ) -> DetectedEvent:
     return DetectedEvent(
-        event_type="hanging_piece_created",
+        event_type=event_type,
         side=side,
-        move=chess.Move.from_uci("e2e4"),
+        move=chess.Move.from_uci(move_uci),
         position=chess.Board(),
         squares=(chess.E4,),
         metadata=EventMetadata(
             before_fen=before_fen,
             after_fen=after_fen,
-            move_uci="e2e4",
-            move_san="e4",
+            move_uci=move_uci,
+            move_san=move_san,
             ply=1,
         ),
         evidence={},
         severity=1.0,
+        candidate_move=candidate_move,
     )
 
 
@@ -51,6 +57,12 @@ def analysis(
         principal_variation=principal_variation,
         depth=depth,
     )
+
+
+def candidate_after_fen(start_fen: str, move_uci: str) -> str:
+    board = chess.Board(start_fen)
+    board.push(chess.Move.from_uci(move_uci))
+    return board.fen()
 
 
 class EventVerifierTest(unittest.TestCase):
@@ -108,6 +120,7 @@ class EventVerifierTest(unittest.TestCase):
 
         self.assertEqual(assessment.eval_delta, 50)
         self.assertEqual(assessment.eval_delta_for_event_side, 50)
+        self.assertEqual(assessment.event_impact_for_side, 50)
         self.assertEqual(assessment.impact_magnitude, 50)
 
     def test_computes_side_aware_delta_for_black_attributed_event(self) -> None:
@@ -123,6 +136,7 @@ class EventVerifierTest(unittest.TestCase):
 
         self.assertEqual(assessment.eval_delta, 50)
         self.assertEqual(assessment.eval_delta_for_event_side, -50)
+        self.assertEqual(assessment.event_impact_for_side, -50)
         self.assertEqual(assessment.impact_magnitude, 50)
 
     def test_black_attributed_event_improves_when_white_perspective_delta_is_negative(
@@ -140,6 +154,7 @@ class EventVerifierTest(unittest.TestCase):
 
         self.assertEqual(assessment.eval_delta, -40)
         self.assertEqual(assessment.eval_delta_for_event_side, 40)
+        self.assertEqual(assessment.event_impact_for_side, 40)
         self.assertEqual(assessment.impact_magnitude, 40)
 
     def test_copies_best_move_principal_variation_and_depth_from_before_analysis(self) -> None:
@@ -170,6 +185,146 @@ class EventVerifierTest(unittest.TestCase):
         self.assertEqual(assessment.principal_variation, principal_variation)
         self.assertEqual(assessment.depth, 14)
 
+    def test_missed_candidate_event_compares_actual_move_against_candidate(self) -> None:
+        engine = Mock()
+        candidate_fen = candidate_after_fen(chess.STARTING_FEN, "d2d4")
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(400), chess.WHITE)),
+        )
+
+        assessment = EventVerifier(engine).verify(
+            make_event(
+                event_type="fork_missed",
+                candidate_move=CandidateMove(
+                    move_uci="d2d4",
+                    move_san="d4",
+                    start_fen=chess.STARTING_FEN,
+                    side=chess.WHITE,
+                ),
+            )
+        ).engine_assessment
+
+        self.assertEqual(engine.evaluate_fen.call_args_list[-1], call(candidate_fen))
+        self.assertEqual(assessment.eval_delta, 100)
+        self.assertEqual(assessment.candidate_eval_after, 400)
+        self.assertEqual(assessment.candidate_after_fen, candidate_fen)
+        self.assertEqual(assessment.candidate_move_uci, "d2d4")
+        self.assertEqual(assessment.event_impact_for_side, -300)
+        self.assertEqual(assessment.impact_magnitude, 300)
+
+    def test_knight_outpost_missed_uses_missed_candidate_strategy(self) -> None:
+        engine = Mock()
+        candidate_fen = candidate_after_fen(chess.STARTING_FEN, "d2d4")
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(250), chess.WHITE)),
+        )
+
+        assessment = EventVerifier(engine).verify(
+            make_event(
+                event_type="knight_outpost_missed",
+                candidate_move=CandidateMove(
+                    move_uci="d2d4",
+                    move_san="d4",
+                    start_fen=chess.STARTING_FEN,
+                    side=chess.WHITE,
+                ),
+            )
+        ).engine_assessment
+
+        self.assertEqual(engine.evaluate_fen.call_args_list[-1], call(candidate_fen))
+        self.assertEqual(assessment.event_impact_for_side, -150)
+        self.assertEqual(assessment.impact_magnitude, 150)
+
+    def test_missed_candidate_worse_than_actual_move_has_positive_event_impact(
+        self,
+    ) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(330), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(-600), chess.WHITE)),
+        )
+
+        assessment = EventVerifier(engine).verify(
+            make_event(
+                event_type="fork_missed",
+                candidate_move=CandidateMove(
+                    move_uci="d2d4",
+                    move_san="d4",
+                    start_fen=chess.STARTING_FEN,
+                    side=chess.WHITE,
+                ),
+            )
+        ).engine_assessment
+
+        self.assertEqual(assessment.event_impact_for_side, 930)
+        self.assertEqual(assessment.impact_magnitude, 930)
+
+    def test_allowed_response_event_compares_opponent_candidate_to_actual_after(
+        self,
+    ) -> None:
+        engine = Mock()
+        after_fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+        candidate_fen = candidate_after_fen(after_fen, "e7e5")
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(-200), chess.WHITE)),
+        )
+
+        assessment = EventVerifier(engine).verify(
+            make_event(
+                event_type="fork_allowed",
+                after_fen=after_fen,
+                candidate_move=CandidateMove(
+                    move_uci="e7e5",
+                    move_san="e5",
+                    start_fen=after_fen,
+                    side=chess.BLACK,
+                ),
+            )
+        ).engine_assessment
+
+        self.assertEqual(engine.evaluate_fen.call_args_list[-1], call(candidate_fen))
+        self.assertEqual(assessment.candidate_eval_after, -200)
+        self.assertEqual(assessment.candidate_after_fen, candidate_fen)
+        self.assertEqual(assessment.event_impact_for_side, -300)
+        self.assertEqual(assessment.impact_magnitude, 300)
+
+    def test_missed_candidate_black_side_flips_perspective(self) -> None:
+        engine = Mock()
+        before_fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+        after_fen = candidate_after_fen(before_fen, "e7e6")
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(-200), chess.WHITE)),
+        )
+
+        assessment = EventVerifier(engine).verify(
+            make_event(
+                event_type="fork_missed",
+                side=chess.BLACK,
+                before_fen=before_fen,
+                after_fen=after_fen,
+                move_uci="e7e6",
+                move_san="e6",
+                candidate_move=CandidateMove(
+                    move_uci="e7e5",
+                    move_san="e5",
+                    start_fen=before_fen,
+                    side=chess.BLACK,
+                ),
+            )
+        ).engine_assessment
+
+        self.assertEqual(assessment.event_impact_for_side, -300)
+        self.assertEqual(assessment.impact_magnitude, 300)
+
     def test_unavailable_scores_produce_none_eval_and_delta(self) -> None:
         engine = Mock()
         engine.evaluate_fen.side_effect = (
@@ -184,6 +339,7 @@ class EventVerifierTest(unittest.TestCase):
         self.assertIsNone(assessment.eval_delta)
         self.assertIsNone(assessment.eval_delta_for_event_side)
         self.assertIsNone(assessment.impact_magnitude)
+        self.assertIsNone(assessment.event_impact_for_side)
 
     def test_mate_scores_produce_none_eval_and_delta(self) -> None:
         engine = Mock()
@@ -199,6 +355,121 @@ class EventVerifierTest(unittest.TestCase):
         self.assertIsNone(assessment.eval_delta)
         self.assertIsNone(assessment.eval_delta_for_event_side)
         self.assertIsNone(assessment.impact_magnitude)
+        self.assertIsNone(assessment.event_impact_for_side)
+
+    def test_candidate_score_unavailable_produces_none_event_impact(self) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+            analysis(None),
+        )
+
+        assessment = EventVerifier(engine).verify(
+            make_event(
+                event_type="fork_missed",
+                candidate_move=CandidateMove(
+                    move_uci="d2d4",
+                    move_san="d4",
+                    start_fen=chess.STARTING_FEN,
+                    side=chess.WHITE,
+                ),
+            )
+        ).engine_assessment
+
+        self.assertIsNone(assessment.candidate_eval_after)
+        self.assertIsNone(assessment.event_impact_for_side)
+        self.assertIsNone(assessment.impact_magnitude)
+
+    def test_missing_candidate_move_raises_for_candidate_event(self) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+        )
+
+        with self.assertRaisesRegex(EventVerificationError, "Candidate move is required"):
+            EventVerifier(engine).verify(make_event(event_type="fork_missed"))
+
+    def test_candidate_start_fen_mismatch_raises(self) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+        )
+
+        with self.assertRaisesRegex(EventVerificationError, "start FEN"):
+            EventVerifier(engine).verify(
+                make_event(
+                    event_type="fork_missed",
+                    candidate_move=CandidateMove(
+                        move_uci="d2d4",
+                        move_san="d4",
+                        start_fen="different-fen",
+                        side=chess.WHITE,
+                    ),
+                )
+            )
+
+    def test_invalid_candidate_uci_raises(self) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+        )
+
+        with self.assertRaisesRegex(EventVerificationError, "UCI"):
+            EventVerifier(engine).verify(
+                make_event(
+                    event_type="fork_missed",
+                    candidate_move=CandidateMove(
+                        move_uci="not-a-move",
+                        move_san=None,
+                        start_fen=chess.STARTING_FEN,
+                        side=chess.WHITE,
+                    ),
+                )
+            )
+
+    def test_candidate_side_mismatch_raises(self) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+        )
+
+        with self.assertRaisesRegex(EventVerificationError, "side"):
+            EventVerifier(engine).verify(
+                make_event(
+                    event_type="fork_missed",
+                    candidate_move=CandidateMove(
+                        move_uci="d2d4",
+                        move_san="d4",
+                        start_fen=chess.STARTING_FEN,
+                        side=chess.BLACK,
+                    ),
+                )
+            )
+
+    def test_illegal_candidate_move_raises(self) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+        )
+
+        with self.assertRaisesRegex(EventVerificationError, "not legal"):
+            EventVerifier(engine).verify(
+                make_event(
+                    event_type="fork_missed",
+                    candidate_move=CandidateMove(
+                        move_uci="e7e5",
+                        move_san="e5",
+                        start_fen=chess.STARTING_FEN,
+                        side=chess.WHITE,
+                    ),
+                )
+            )
 
     def test_engine_exceptions_propagate(self) -> None:
         engine = Mock()

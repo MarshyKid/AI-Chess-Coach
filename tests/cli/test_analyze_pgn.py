@@ -70,7 +70,9 @@ class AnalyzePgnCliTest(unittest.TestCase):
         self.assertIn("- hanging_piece_created side=white move=e2e4 squares=e4 severity=1.5", output)
         self.assertIn("Verified Events (1)", output)
         self.assertIn(
-            "- hanging_piece_created eval_before=10 eval_after=-40 eval_delta=-50 best_move=e2e4 depth=12",
+            "- hanging_piece_created eval_before=10 eval_after=-40 eval_delta=-50 "
+            "event_impact_for_side=-50 impact_magnitude=50 candidate_move=none "
+            "best_move=e2e4 depth=12",
             output,
         )
         self.assertIn("Detected Patterns (1)", output)
@@ -294,6 +296,9 @@ def populated_result() -> GameAnalysisResult:
             best_move=move,
             principal_variation=(move,),
             depth=12,
+            eval_delta_for_event_side=-50,
+            impact_magnitude=50,
+            event_impact_for_side=-50,
         ),
     )
     pattern = DetectedPattern(

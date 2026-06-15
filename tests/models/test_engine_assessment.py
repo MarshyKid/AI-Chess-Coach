@@ -24,6 +24,10 @@ class EngineAssessmentTest(unittest.TestCase):
             depth=14,
             eval_delta_for_event_side=55,
             impact_magnitude=55,
+            candidate_eval_after=120,
+            candidate_move_uci="d2d4",
+            candidate_after_fen="candidate-after-fen",
+            event_impact_for_side=-40,
         )
 
         self.assertEqual(assessment.eval_before, 25)
@@ -34,6 +38,10 @@ class EngineAssessmentTest(unittest.TestCase):
         self.assertEqual(assessment.depth, 14)
         self.assertEqual(assessment.eval_delta_for_event_side, 55)
         self.assertEqual(assessment.impact_magnitude, 55)
+        self.assertEqual(assessment.candidate_eval_after, 120)
+        self.assertEqual(assessment.candidate_move_uci, "d2d4")
+        self.assertEqual(assessment.candidate_after_fen, "candidate-after-fen")
+        self.assertEqual(assessment.event_impact_for_side, -40)
 
     def test_supports_missing_evals_best_move_and_depth(self) -> None:
         assessment = EngineAssessment(
@@ -53,6 +61,10 @@ class EngineAssessmentTest(unittest.TestCase):
         self.assertIsNone(assessment.depth)
         self.assertIsNone(assessment.eval_delta_for_event_side)
         self.assertIsNone(assessment.impact_magnitude)
+        self.assertIsNone(assessment.candidate_eval_after)
+        self.assertIsNone(assessment.candidate_move_uci)
+        self.assertIsNone(assessment.candidate_after_fen)
+        self.assertIsNone(assessment.event_impact_for_side)
 
     def test_principal_variation_is_stored_as_tuple_of_chess_moves(self) -> None:
         principal_variation = (

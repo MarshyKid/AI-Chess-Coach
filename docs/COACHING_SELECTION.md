@@ -46,7 +46,7 @@ This polarity should live in an event type metadata registry, not inside individ
 
 Raw Stockfish centipawn scores are stored from White's perspective. This is important objective evidence, but it is not enough for coaching selection.
 
-For coaching, the system also needs impact from the attributed event side's perspective:
+For actual-move events, the system also records the played move's impact from the attributed event side's perspective:
 
 ```text
 if event.side is White:
@@ -63,6 +63,26 @@ negative side-aware delta -> worse for the attributed side
 ```
 
 This prevents a positive-looking motif from being celebrated when the move was actually bad for the player who created it.
+
+Counterfactual event types need candidate-aware verification:
+
+- `fork_missed` and `knight_outpost_missed` compare the actual move against the missed candidate.
+- `fork_allowed` compares the actual after-position against the opponent's candidate reply.
+
+For coaching selection, the canonical field is:
+
+```text
+event_impact_for_side
+```
+
+Interpretation:
+
+```text
+positive event_impact_for_side -> better for the attributed side
+negative event_impact_for_side -> worse for the attributed side
+```
+
+`impact_magnitude` is `abs(event_impact_for_side)` when available.
 
 Example:
 
@@ -84,7 +104,7 @@ A first version of coaching selection should be deterministic and simple.
 
 Recommended default rules:
 
-1. Compute side-aware impact for each verified event.
+1. Use `event_impact_for_side` from engine verification.
 2. Look up event type polarity.
 3. Filter out events with no meaningful engine impact.
 4. Filter out low-impact events below a threshold such as 80 centipawns.

@@ -256,8 +256,10 @@ Fields:
 - `move`
 - `position`
 - `squares`
+- `metadata`
 - `evidence`
 - `severity`
+- `candidate_move`
 
 `side` is the color/player the event is attributed to. It is not necessarily the
 player who made the move. For `HangingPieceDetector`:
@@ -284,6 +286,36 @@ Rules:
 - Must be deterministic.
 - Must be suitable for testing.
 
+`candidate_move` is `None` for actual-move events. Counterfactual events such
+as `fork_missed`, `fork_allowed`, and `knight_outpost_missed` use typed
+candidate moves so engine verification can evaluate the candidate line without
+reading move strings out of `evidence`.
+
+---
+
+## CandidateMove
+
+Represents a typed candidate move attached to a counterfactual event.
+
+Expected file:
+
+```text
+src/ai_chess_coach/models/candidate_move.py
+```
+
+Fields:
+
+- `move_uci`
+- `move_san`
+- `start_fen`
+- `side`
+
+Rules:
+
+- Used by engine verification.
+- Does not replace detector-specific evidence used for display.
+- Must not contain coaching language.
+
 Good evidence:
 
 ```python
@@ -301,6 +333,35 @@ Bad evidence:
     "explanation": "You need to stop blundering bishops."
 }
 ```
+
+---
+
+## EventTypeMetadata
+
+Represents central metadata for detector event types.
+
+Expected file:
+
+```text
+src/ai_chess_coach/models/event_type_metadata.py
+```
+
+Fields:
+
+- `event_type`
+- `display_name`
+- `category`
+- `polarity`
+- `verification_kind`
+
+`verification_kind` describes how the engine layer should verify the event:
+
+- `actual_move`: the played move caused the event.
+- `missed_candidate`: the player had a candidate move but did not play it.
+- `allowed_response`: the played move allowed an opponent candidate reply.
+
+Unknown event types remain neutral and default to `actual_move` verification
+metadata for deterministic backward compatibility.
 
 ---
 
@@ -326,8 +387,27 @@ Fields:
 - `eval_before`
 - `eval_after`
 - `eval_delta`
+- `eval_delta_for_event_side`
+- `candidate_eval_after`
+- `candidate_move_uci`
+- `candidate_after_fen`
+- `event_impact_for_side`
+- `impact_magnitude`
 - `best_move`
 - `principal_variation`
+
+`eval_delta` remains the raw White-perspective delta for the actual played
+move: `eval_after - eval_before`.
+
+`eval_delta_for_event_side` is the actual played move delta from the attributed
+event side's perspective. It is retained for debugging and compatibility.
+
+`event_impact_for_side` is the canonical signed impact of the event for coaching
+selection. Actual-move events usually use the actual played move impact. Missed
+candidate and allowed-response events compare the actual position with the
+candidate line represented by `CandidateMove`.
+
+`impact_magnitude` is `abs(event_impact_for_side)` when available.
 
 Rules:
 

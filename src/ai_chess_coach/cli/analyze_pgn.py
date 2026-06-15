@@ -150,6 +150,9 @@ def _format_verified_event(event: VerifiedEvent) -> str:
         f"- {event.event.event_type} eval_before={_value(assessment.eval_before)} "
         f"eval_after={_value(assessment.eval_after)} "
         f"eval_delta={_value(assessment.eval_delta)} "
+        f"event_impact_for_side={_value(assessment.event_impact_for_side)} "
+        f"impact_magnitude={_value(assessment.impact_magnitude)} "
+        f"candidate_move={_value(assessment.candidate_move_uci)} "
         f"best_move={_move(assessment.best_move)} depth={_value(assessment.depth)}"
     )
 
