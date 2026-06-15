@@ -1,10 +1,8 @@
 # Coaching Moment Selection
 
-## Problem
+## Purpose
 
-The detector and verification layers can legitimately produce many `VerifiedEvent` objects for one game. A single move can create several detector findings, especially for tactical opportunity detectors like forks.
-
-That raw volume is useful for debugging, pattern aggregation, and future drill generation, but it is too noisy for a user-facing review. A coach should not show every raw event as a separate lesson.
+The detector and verification layers can legitimately produce many `VerifiedEvent` objects for one game. That raw volume is useful for debugging, pattern aggregation, retrieval, drill generation, and future coaching features, but it is too noisy to show directly as the main user-facing review.
 
 The intended distinction is:
 
@@ -13,61 +11,46 @@ VerifiedEvent = raw verified evidence
 CoachingMoment = selected teaching point
 ```
 
-The system should keep all raw verified events, but generate only a small number of selected coaching moments.
+The system keeps all raw verified events in pipeline outputs, then selects a small number of coaching moments for review.
 
 ## Principles
 
 1. Detectors identify chess motifs. They do not decide what is worth coaching.
-2. Engine verification measures objective impact. It should preserve raw engine evidence.
-3. Coaching selection happens after verification, using verified evidence and event metadata.
-4. The selector should reduce noise without deleting raw evidence from pipeline outputs.
-5. The LLM coach should receive retrieved/selected evidence, not every raw event by default.
+2. Engine verification measures objective impact. It preserves raw engine evidence and computes a canonical event impact.
+3. Coaching selection happens after verification, using `VerifiedEvent` objects and event metadata.
+4. The selector reduces noise without deleting raw evidence from `GameAnalysisResult.verified_events`.
+5. The LLM coach should receive retrieved or selected evidence, not an unfiltered dump of every raw event by default.
 
-## Event Polarity
+## Event Type Metadata
 
-Event types need central metadata that describes their coaching meaning.
+Event types need central metadata that describes their downstream coaching meaning.
 
 Examples:
 
 ```text
-fork_created              -> positive
-knight_outpost_created    -> positive
-fork_missed               -> negative
-fork_allowed              -> negative
-hanging_piece_created     -> negative
-hanging_piece_ignored     -> negative
-hanging_piece_lost        -> negative
-knight_outpost_missed     -> negative
+fork_created              -> positive, tactics, actual_move
+knight_outpost_created    -> positive, positional, actual_move
+fork_missed               -> negative, tactics, missed_candidate
+fork_allowed              -> negative, tactics, allowed_response
+hanging_piece_created     -> negative, piece_safety, actual_move
+hanging_piece_ignored     -> negative, piece_safety, actual_move
+hanging_piece_lost        -> negative, piece_safety, actual_move
+knight_outpost_missed     -> negative, positional, missed_candidate
 ```
 
-This polarity should live in an event type metadata registry, not inside individual detectors and not as scattered hardcoded lists.
+This metadata should live in the event type metadata registry, not in individual detectors and not as scattered hardcoded lists.
 
-## Side-Aware Engine Impact
+## Engine Impact Fields
 
 Raw Stockfish centipawn scores are stored from White's perspective. This is important objective evidence, but it is not enough for coaching selection.
 
-For actual-move events, the system also records the played move's impact from the attributed event side's perspective:
+`EngineAssessment.eval_delta` remains the raw White-perspective actual-move delta:
 
 ```text
-if event.side is White:
-    eval_delta_for_event_side = eval_delta
-else:
-    eval_delta_for_event_side = -eval_delta
+eval_delta = eval_after - eval_before
 ```
 
-Interpretation:
-
-```text
-positive side-aware delta -> better for the attributed side
-negative side-aware delta -> worse for the attributed side
-```
-
-This prevents a positive-looking motif from being celebrated when the move was actually bad for the player who created it.
-
-Counterfactual event types need candidate-aware verification:
-
-- `fork_missed` and `knight_outpost_missed` compare the actual move against the missed candidate.
-- `fork_allowed` compares the actual after-position against the opponent's candidate reply.
+`EngineAssessment.eval_delta_for_event_side` remains the actual played move delta from the attributed event side's perspective. It is useful for debugging actual-move events and keeping compatibility with earlier tasks.
 
 For coaching selection, the canonical field is:
 
@@ -84,59 +67,140 @@ negative event_impact_for_side -> worse for the attributed side
 
 `impact_magnitude` is `abs(event_impact_for_side)` when available.
 
+## Verification Kinds
+
+Different event types represent different chess claims, so engine verification must use different comparisons.
+
+### actual_move
+
+The played move itself caused the event.
+
+Examples:
+
+```text
+hanging_piece_created
+hanging_piece_ignored
+hanging_piece_lost
+fork_created
+knight_outpost_created
+```
+
+Verification compares:
+
+```text
+before_fen -> after_fen
+```
+
+For these events, `event_impact_for_side` is the actual-move delta from the event side's perspective.
+
+### missed_candidate
+
+The player had a candidate move but did not play it.
+
+Examples:
+
+```text
+fork_missed
+knight_outpost_missed
+```
+
+Verification compares the played move against the candidate move:
+
+```text
+before position
+├── actual move played    -> eval_after
+└── candidate move        -> candidate_eval_after
+```
+
+For these events:
+
+```text
+event_impact_for_side = actual_after_for_event_side - candidate_after_for_event_side
+```
+
+A negative value means missing the candidate hurt the attributed side. A positive value means the candidate was worse than the move played and should not be promoted as a negative coaching moment.
+
+### allowed_response
+
+The played move allowed the opponent a dangerous candidate reply.
+
 Example:
 
 ```text
-fork_created by White, eval_delta_for_event_side = +180
+fork_allowed
 ```
 
-This can be a good coaching moment.
+Verification compares the after-position against the opponent candidate reply:
 
 ```text
-fork_created by White, eval_delta_for_event_side = -300
+after actual move
+└── opponent candidate reply -> candidate_eval_after
 ```
 
-This should not be promoted as a strength. The motif may exist, but the move was bad overall.
+For these events:
 
-## Selection Rules
+```text
+event_impact_for_side = candidate_after_for_event_side - actual_after_for_event_side
+```
 
-A first version of coaching selection should be deterministic and simple.
+A negative value means the opponent reply would hurt the side who allowed it.
 
-Recommended default rules:
+## Current Selection Rules
+
+The current selector is deterministic and intentionally simple.
+
+Rules:
 
 1. Use `event_impact_for_side` from engine verification.
-2. Look up event type polarity.
-3. Filter out events with no meaningful engine impact.
-4. Filter out low-impact events below a threshold such as 80 centipawns.
-5. Filter out polarity-mismatched events:
-   * positive event type but bad for event side
-   * negative event type but not meaningfully bad for event side
-6. Group related same-move events when they represent one underlying lesson.
-7. Rank candidates by impact magnitude.
-8. Limit the review to a small number of moments, such as top 5.
+2. Look up event type polarity from `EventTypeMetadata`.
+3. Skip neutral or unknown event types.
+4. Skip events with no `event_impact_for_side` or missing `impact_magnitude`.
+5. Filter out low-impact events below the configured threshold, currently defaulting to 80 centipawns.
+6. Filter out polarity-mismatched events:
+   - positive event type but `event_impact_for_side <= 0`
+   - negative event type but `event_impact_for_side >= 0`
+7. Rank selected events by `impact_magnitude` descending, with deterministic tie-breakers.
+8. Limit the review to a small number of moments, currently defaulting to top 5.
 
-## Grouping
+## Current Grouping Behavior
 
-Grouping should reduce repeated lessons without hiding evidence.
+User-facing grouping is currently disabled.
 
-A useful first grouping key is:
+Each selected `VerifiedEvent` becomes one `CoachingMoment`. Internally, `CoachingMomentSelector` may still return a `VerifiedEventGroup` wrapper for compatibility, but each returned group should contain exactly one event.
+
+Current behavior:
 
 ```text
-metadata.ply + event.side + event category + event polarity
+1 selected VerifiedEvent -> 1 CoachingMoment
 ```
 
-This means multiple fork misses from the same move can become one coaching moment with several supporting events.
-
-The `CoachingMoment.supporting_evidence` tuple should preserve the grouped `VerifiedEvent` objects.
-
-Good grouping:
+This makes CLI output easier to inspect and avoids hiding weak or noisy candidate events inside broad summaries such as:
 
 ```text
-Move 16: multiple fork opportunities missed
+Move 16: Multiple fork-related tactical issues
+```
+
+The raw events remain available separately in `GameAnalysisResult.verified_events`.
+
+## Future Grouping Design
+
+Grouping may return later after candidate-aware verification and output quality are stable.
+
+A future grouping implementation should only group events that clearly represent the same underlying lesson. It should avoid merging weak candidate events into an authoritative-looking summary.
+
+Possible future grouping key:
+
+```text
+metadata.ply + event.side + event category + event polarity + event type
+```
+
+Good future grouping:
+
+```text
+Move 16: multiple missed fork candidates
 supporting evidence:
 - fork_missed on e6
-- fork_missed on e8
-- fork_missed on f6
+- fork_missed on g7
 ```
 
 Bad grouping:
@@ -145,7 +209,7 @@ Bad grouping:
 Move 16: fork created and queen hung
 ```
 
-Positive and negative events should not be merged into a single celebratory moment without careful explanation.
+Positive and negative events should not be merged into a single celebratory or corrective moment without careful explanation.
 
 ## Output Goal
 
@@ -163,11 +227,11 @@ but the review should produce something closer to:
 
 The raw events remain available for:
 
-* debugging
-* pattern aggregation
-* drill generation
-* detailed evidence retrieval
-* LLM grounding
+- debugging
+- pattern aggregation
+- drill generation
+- detailed evidence retrieval
+- LLM grounding
 
 The selected coaching moments become the primary user-facing review.
 
