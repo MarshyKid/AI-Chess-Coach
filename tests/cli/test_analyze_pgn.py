@@ -83,6 +83,13 @@ class AnalyzePgnCliTest(unittest.TestCase):
         self.assertIn("- Hanging Piece Created", output)
         self.assertIn("  Position:", output)
         self.assertIn("  Highlights: e4", output)
+        self.assertIn("  Summary: A verified event was found.", output)
+        self.assertIn("  Details:", output)
+        self.assertIn(
+            "    - hanging_piece_created: white pawn on e4 became hanging; "
+            "attackers: d5; defenders: none",
+            output,
+        )
 
     def test_format_result_handles_empty_sections(self) -> None:
         output = analyze_pgn.format_result(empty_result())
@@ -113,6 +120,7 @@ class AnalyzePgnCliTest(unittest.TestCase):
 
         self.assertIn("Verified Events (2)", output)
         self.assertIn("Coaching Moments (1)", output)
+        self.assertEqual(output.count("    - hanging_piece_created:"), 1)
 
     def test_main_success_reads_file_runs_pipeline_prints_result_and_closes_engine(self) -> None:
         fake_engine = FakeEngine()
@@ -268,7 +276,13 @@ def populated_result() -> GameAnalysisResult:
             move_san=san,
             ply=transition.ply,
         ),
-        evidence={},
+        evidence={
+            "piece_square": "e4",
+            "piece": "P",
+            "piece_color": "white",
+            "attackers": ("d5",),
+            "defenders": (),
+        },
         severity=1.5,
     )
     verified_event = VerifiedEvent(

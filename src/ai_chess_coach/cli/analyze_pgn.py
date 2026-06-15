@@ -8,6 +8,7 @@ import sys
 
 import chess
 
+from ai_chess_coach.coaching import format_coaching_moment_details
 from ai_chess_coach.detectors import (
     DetectionPipeline,
     DetectorRegistry,
@@ -87,7 +88,11 @@ def format_result(result: GameAnalysisResult) -> str:
         if moment.position_reference is not None:
             lines.append(f"  Position: {moment.position_reference}")
         lines.append(f"  Highlights: {_squares(moment.highlights)}")
-        lines.append(f"  {moment.explanation}")
+        lines.append(f"  Summary: {moment.explanation}")
+        details = format_coaching_moment_details(moment)
+        if details:
+            lines.append("  Details:")
+            lines.extend(f"    - {detail}" for detail in details)
 
     return "\n".join(lines)
 

@@ -87,7 +87,7 @@ class ReviewGeneratorTest(unittest.TestCase):
 
         moment = ReviewGenerator().generate((event,))[0]
 
-        self.assertEqual(moment.title, "Hanging Piece Created")
+        self.assertEqual(moment.title, "Move 1: Piece safety issue")
         self.assertIn("Hanging Piece Created", moment.explanation)
         self.assertIn("-125 centipawns", moment.explanation)
         self.assertEqual(moment.supporting_evidence, (event,))
@@ -176,9 +176,29 @@ class ReviewGeneratorTest(unittest.TestCase):
         moments = ReviewGenerator().generate((first, second))
 
         self.assertEqual(len(moments), 1)
+        self.assertEqual(
+            moments[0].title,
+            "Move 1: Multiple fork-related tactical issues",
+        )
         self.assertEqual(moments[0].supporting_evidence, (first, second))
         self.assertEqual(moments[0].highlights, (chess.C3, chess.F3))
-        self.assertIn("2 related tactics negative events", moments[0].explanation)
+        self.assertIn(
+            "Several fork-related tactical issues were found in this position.",
+            moments[0].explanation,
+        )
+        self.assertIn(
+            "The largest engine impact was 100 centipawns.",
+            moments[0].explanation,
+        )
+
+    def test_grouped_wording_avoids_internal_category_and_polarity_language(self) -> None:
+        first = make_verified_event("fork_missed", move_uci="g1f3")
+        second = make_verified_event("fork_allowed", move_uci="b1c3")
+
+        moment = ReviewGenerator().generate((first, second))[0]
+
+        self.assertNotIn("Tactics Negative Events On Ply", moment.title)
+        self.assertNotIn("related tactics negative events", moment.explanation)
 
     def test_empty_input_returns_empty_tuple(self) -> None:
         moments = ReviewGenerator().generate(())
