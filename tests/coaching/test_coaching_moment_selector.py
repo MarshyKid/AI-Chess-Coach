@@ -114,7 +114,7 @@ class CoachingMomentSelectorTest(unittest.TestCase):
 
         self.assertEqual(groups, ())
 
-    def test_same_ply_side_category_and_polarity_events_are_grouped(self) -> None:
+    def test_same_ply_side_category_and_polarity_events_are_not_grouped(self) -> None:
         first = make_verified_event(
             "fork_missed",
             ply=7,
@@ -130,12 +130,12 @@ class CoachingMomentSelectorTest(unittest.TestCase):
 
         groups = CoachingMomentSelector().select((first, second))
 
-        self.assertEqual(len(groups), 1)
-        self.assertIsInstance(groups[0], VerifiedEventGroup)
-        self.assertEqual(groups[0].events, (first, second))
-        self.assertEqual(groups[0].category, "tactics")
-        self.assertEqual(groups[0].polarity, "negative")
-        self.assertEqual(groups[0].impact_magnitude, 100)
+        self.assertEqual(len(groups), 2)
+        self.assertTrue(all(isinstance(group, VerifiedEventGroup) for group in groups))
+        self.assertEqual(tuple(group.events for group in groups), ((second,), (first,)))
+        self.assertTrue(all(len(group.events) == 1 for group in groups))
+        self.assertTrue(all(group.category == "tactics" for group in groups))
+        self.assertTrue(all(group.polarity == "negative" for group in groups))
 
     def test_different_side_or_polarity_events_are_not_grouped(self) -> None:
         white_negative = make_verified_event("fork_missed", side=chess.WHITE)
@@ -152,6 +152,7 @@ class CoachingMomentSelectorTest(unittest.TestCase):
         )
 
         self.assertEqual(len(groups), 3)
+        self.assertTrue(all(len(group.events) == 1 for group in groups))
 
     def test_groups_are_ranked_by_impact_and_limited(self) -> None:
         events = tuple(
@@ -172,6 +173,25 @@ class CoachingMomentSelectorTest(unittest.TestCase):
             tuple(group.impact_magnitude for group in groups),
             (600, 500, 400, 300, 200),
         )
+        self.assertTrue(all(len(group.events) == 1 for group in groups))
+
+    def test_tie_breaking_uses_stable_event_fields(self) -> None:
+        later_move = make_verified_event(
+            "fork_missed",
+            ply=2,
+            move_uci="g1f3",
+            squares=(chess.F3,),
+        )
+        earlier_move = make_verified_event(
+            "fork_allowed",
+            ply=1,
+            move_uci="b1c3",
+            squares=(chess.C3,),
+        )
+
+        groups = CoachingMomentSelector().select((later_move, earlier_move))
+
+        self.assertEqual(tuple(group.events[0] for group in groups), (earlier_move, later_move))
 
     def test_invalid_items_raise_type_error(self) -> None:
         with self.assertRaises(TypeError):

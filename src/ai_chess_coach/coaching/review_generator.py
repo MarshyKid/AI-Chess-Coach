@@ -37,40 +37,19 @@ def _coaching_moment(group: VerifiedEventGroup) -> CoachingMoment:
 
 def _title(group: VerifiedEventGroup) -> str:
     move_number = _move_number(group)
-    if len(group.events) == 1:
-        event_type = group.events[0].event.event_type
-        metadata = get_event_type_metadata(event_type)
-        if event_type.startswith("fork_"):
-            return f"Move {move_number}: Fork-related tactical issue"
-        if event_type.startswith("hanging_piece_"):
-            return f"Move {move_number}: Piece safety issue"
-        if event_type.startswith("knight_outpost_"):
-            return f"Move {move_number}: Knight outpost opportunity"
-
+    event_type = group.events[0].event.event_type
+    metadata = get_event_type_metadata(event_type)
+    if event_type.startswith("fork_"):
         return f"Move {move_number}: {metadata.display_name}"
+    if event_type.startswith("hanging_piece_"):
+        return f"Move {move_number}: Piece safety issue"
+    if event_type.startswith("knight_outpost_"):
+        return f"Move {move_number}: Knight outpost opportunity"
 
-    if _all_event_types_start_with(group, "fork_"):
-        return f"Move {move_number}: Multiple fork-related tactical issues"
-    if _all_event_types_start_with(group, "hanging_piece_"):
-        return f"Move {move_number}: Multiple piece safety issues"
-    if _all_event_types_start_with(group, "knight_outpost_"):
-        return f"Move {move_number}: Multiple knight outpost opportunities"
-
-    if group.category == "tactics":
-        return f"Move {move_number}: Major tactical issue"
-
-    category_title = group.category.replace("_", " ").title()
-    return f"Move {move_number}: Major {category_title.lower()} issue"
+    return f"Move {move_number}: {metadata.display_name}"
 
 
 def _explanation(group: VerifiedEventGroup) -> str:
-    if len(group.events) > 1:
-        topic = _group_topic(group)
-        return (
-            f"Several {topic} were found in this position. "
-            f"The largest engine impact was {group.impact_magnitude} centipawns."
-        )
-
     event = group.events[0]
     event_title = event.event.event_type.replace("_", " ").title()
     eval_delta = event.engine_assessment.eval_delta
@@ -100,20 +79,3 @@ def _highlights(group: VerifiedEventGroup) -> tuple[chess.Square, ...]:
 
 def _move_number(group: VerifiedEventGroup) -> int:
     return (group.events[0].event.metadata.ply + 1) // 2
-
-
-def _all_event_types_start_with(group: VerifiedEventGroup, prefix: str) -> bool:
-    return all(event.event.event_type.startswith(prefix) for event in group.events)
-
-
-def _group_topic(group: VerifiedEventGroup) -> str:
-    if _all_event_types_start_with(group, "fork_"):
-        return "fork-related tactical issues"
-    if _all_event_types_start_with(group, "hanging_piece_"):
-        return "piece safety issues"
-    if _all_event_types_start_with(group, "knight_outpost_"):
-        return "knight outpost opportunities"
-    if group.category == "tactics":
-        return "tactical issues"
-
-    return f"{group.category.replace('_', ' ')} issues"

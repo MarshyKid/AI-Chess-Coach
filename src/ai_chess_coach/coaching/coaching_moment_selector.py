@@ -42,14 +42,7 @@ class CoachingMomentSelector:
     def select(self, events: Iterable[VerifiedEvent]) -> tuple[VerifiedEventGroup, ...]:
         """Return selected verified event groups in deterministic priority order."""
 
-        grouped_events: dict[
-            tuple[int, bool, str, EventPolarity],
-            list[VerifiedEvent],
-        ] = {}
-        group_metadata: dict[
-            tuple[int, bool, str, EventPolarity],
-            tuple[str, EventPolarity],
-        ] = {}
+        selected_groups: list[VerifiedEventGroup] = []
 
         for event in events:
             if not isinstance(event, VerifiedEvent):
@@ -77,35 +70,21 @@ class CoachingMomentSelector:
             ):
                 continue
 
-            key = (
-                event.event.metadata.ply,
-                event.event.side,
-                event_type_metadata.category,
-                event_type_metadata.polarity,
-            )
-            grouped_events.setdefault(key, []).append(event)
-            group_metadata[key] = (
-                event_type_metadata.category,
-                event_type_metadata.polarity,
+            selected_groups.append(
+                VerifiedEventGroup(
+                    events=(event,),
+                    category=event_type_metadata.category,
+                    polarity=event_type_metadata.polarity,
+                    impact_magnitude=impact_magnitude,
+                )
             )
 
-        groups = tuple(
-            VerifiedEventGroup(
-                events=tuple(group_events),
-                category=group_metadata[key][0],
-                polarity=group_metadata[key][1],
-                impact_magnitude=max(
-                    event.engine_assessment.impact_magnitude or 0
-                    for event in group_events
-                ),
-            )
-            for key, group_events in grouped_events.items()
-        )
-
-        return tuple(sorted(groups, key=_sort_key)[: self.max_moments])
+        return tuple(sorted(selected_groups, key=_sort_key)[: self.max_moments])
 
 
-def _sort_key(group: VerifiedEventGroup) -> tuple[int, int, str, str, str, str]:
+def _sort_key(
+    group: VerifiedEventGroup,
+) -> tuple[int, int, str, str, str, str, str, tuple[int, ...]]:
     first_event = group.events[0].event
     side_name = "white" if first_event.side else "black"
 
@@ -116,4 +95,6 @@ def _sort_key(group: VerifiedEventGroup) -> tuple[int, int, str, str, str, str]:
         group.category,
         group.polarity,
         first_event.event_type,
+        first_event.metadata.move_uci,
+        first_event.squares,
     )

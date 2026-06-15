@@ -161,7 +161,7 @@ class ReviewGeneratorTest(unittest.TestCase):
 
         self.assertEqual(moments, ())
 
-    def test_grouped_events_become_one_coaching_moment(self) -> None:
+    def test_each_selected_event_becomes_one_coaching_moment(self) -> None:
         first = make_verified_event(
             "fork_missed",
             move_uci="g1f3",
@@ -175,30 +175,27 @@ class ReviewGeneratorTest(unittest.TestCase):
 
         moments = ReviewGenerator().generate((first, second))
 
-        self.assertEqual(len(moments), 1)
+        self.assertEqual(len(moments), 2)
         self.assertEqual(
-            moments[0].title,
-            "Move 1: Multiple fork-related tactical issues",
+            tuple(moment.supporting_evidence for moment in moments),
+            ((second,), (first,)),
         )
-        self.assertEqual(moments[0].supporting_evidence, (first, second))
-        self.assertEqual(moments[0].highlights, (chess.C3, chess.F3))
-        self.assertIn(
-            "Several fork-related tactical issues were found in this position.",
-            moments[0].explanation,
-        )
-        self.assertIn(
-            "The largest engine impact was 100 centipawns.",
-            moments[0].explanation,
+        self.assertEqual(moments[0].title, "Move 1: Fork Allowed")
+        self.assertEqual(moments[1].title, "Move 1: Fork Missed")
+        self.assertTrue(
+            all(len(moment.supporting_evidence) == 1 for moment in moments)
         )
 
-    def test_grouped_wording_avoids_internal_category_and_polarity_language(self) -> None:
+    def test_titles_do_not_use_multiple_event_wording(self) -> None:
         first = make_verified_event("fork_missed", move_uci="g1f3")
         second = make_verified_event("fork_allowed", move_uci="b1c3")
 
-        moment = ReviewGenerator().generate((first, second))[0]
+        moments = ReviewGenerator().generate((first, second))
 
-        self.assertNotIn("Tactics Negative Events On Ply", moment.title)
-        self.assertNotIn("related tactics negative events", moment.explanation)
+        self.assertTrue(all("Multiple" not in moment.title for moment in moments))
+        self.assertTrue(
+            all("related tactics negative events" not in moment.explanation for moment in moments)
+        )
 
     def test_empty_input_returns_empty_tuple(self) -> None:
         moments = ReviewGenerator().generate(())
