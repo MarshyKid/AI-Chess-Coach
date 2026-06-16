@@ -8,6 +8,7 @@ from ai_chess_coach.models import (
     CoachingMoment,
     DetectedEvent,
     EngineAssessment,
+    EngineScore,
     EventMetadata,
     VerifiedEvent,
 )
@@ -25,6 +26,11 @@ def make_verified_event(
     before_fen: str = chess.STARTING_FEN,
     after_fen: str = "after-fen",
     squares: tuple[chess.Square, ...] = (chess.E4,),
+    event_score_kind: str = "centipawn",
+    event_impact_rank_for_side: int | None = None,
+    impact_rank: int | None = None,
+    score_after: EngineScore | None = None,
+    candidate_score_after: EngineScore | None = None,
 ) -> VerifiedEvent:
     computed_eval_delta_for_event_side = (
         eval_delta_for_event_side
@@ -71,6 +77,11 @@ def make_verified_event(
             eval_delta_for_event_side=computed_eval_delta_for_event_side,
             impact_magnitude=computed_impact_magnitude,
             event_impact_for_side=computed_event_impact_for_side,
+            score_after=score_after,
+            candidate_score_after=candidate_score_after,
+            event_score_kind=event_score_kind,  # type: ignore[arg-type]
+            event_impact_rank_for_side=event_impact_rank_for_side,
+            impact_rank=impact_rank,
         ),
     )
 
@@ -168,6 +179,31 @@ class ReviewGeneratorTest(unittest.TestCase):
             [impact_larger],
         )
 
+    def test_mate_rank_takes_precedence_over_centipawn_impact_for_sorting(self) -> None:
+        mate_event = make_verified_event(
+            "fork_missed",
+            move_uci="g1f3",
+            event_impact_for_side=None,
+            impact_magnitude=None,
+            event_score_kind="mate",
+            event_impact_rank_for_side=-9_999_998,
+            impact_rank=9_999_998,
+            candidate_score_after=EngineScore(mate=2),
+        )
+        centipawn_event = make_verified_event(
+            "hanging_piece_lost",
+            eval_delta=-900_000,
+            event_impact_for_side=-900_000,
+            impact_magnitude=900_000,
+        )
+
+        moments = ReviewGenerator().generate((centipawn_event, mate_event))
+
+        self.assertEqual(
+            [moment.supporting_evidence[0] for moment in moments],
+            [mate_event, centipawn_event],
+        )
+
     def test_low_impact_events_do_not_become_coaching_moments(self) -> None:
         event = make_verified_event(
             "fork_missed",
@@ -232,6 +268,26 @@ class ReviewGeneratorTest(unittest.TestCase):
             moment.explanation,
             "After this move, the opponent had a reply worth about 300 centipawns.",
         )
+
+    def test_mate_summary_does_not_describe_rank_as_centipawns(self) -> None:
+        event = make_verified_event(
+            "fork_missed",
+            event_impact_for_side=None,
+            impact_magnitude=None,
+            event_score_kind="mate",
+            event_impact_rank_for_side=-9_999_998,
+            impact_rank=9_999_998,
+            candidate_score_after=EngineScore(mate=2),
+        )
+
+        moment = ReviewGenerator().generate((event,))[0]
+
+        self.assertEqual(
+            moment.explanation,
+            "The candidate move led to a forced mate for the event side in 2, "
+            "which was better than the move played.",
+        )
+        self.assertNotIn("centipawns", moment.explanation)
 
     def test_titles_do_not_use_multiple_event_wording(self) -> None:
         first = make_verified_event("fork_missed", move_uci="g1f3")

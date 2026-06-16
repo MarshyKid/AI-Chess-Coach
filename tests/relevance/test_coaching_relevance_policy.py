@@ -18,6 +18,9 @@ def make_verified_event(
     event_impact_for_side: int | None,
     impact_magnitude: int | None,
     eval_delta_for_event_side: int | None = None,
+    event_score_kind: str = "centipawn",
+    event_impact_rank_for_side: int | None = None,
+    impact_rank: int | None = None,
 ) -> VerifiedEvent:
     move = chess.Move.from_uci("e2e4")
     return VerifiedEvent(
@@ -47,6 +50,9 @@ def make_verified_event(
             eval_delta_for_event_side=eval_delta_for_event_side,
             impact_magnitude=impact_magnitude,
             event_impact_for_side=event_impact_for_side,
+            event_score_kind=event_score_kind,  # type: ignore[arg-type]
+            event_impact_rank_for_side=event_impact_rank_for_side,
+            impact_rank=impact_rank,
         ),
     )
 
@@ -133,6 +139,37 @@ class CoachingRelevancePolicyTest(unittest.TestCase):
 
         self.assertTrue(CoachingRelevancePolicy(min_impact_centipawns=100).is_relevant(event))
         self.assertFalse(CoachingRelevancePolicy(min_impact_centipawns=101).is_relevant(event))
+
+    def test_mate_events_use_rank_impact_and_polarity(self) -> None:
+        policy = CoachingRelevancePolicy(min_impact_centipawns=10_000_000)
+        relevant_negative = make_verified_event(
+            "fork_missed",
+            event_impact_for_side=None,
+            impact_magnitude=None,
+            event_score_kind="mate",
+            event_impact_rank_for_side=-9_999_998,
+            impact_rank=9_999_998,
+        )
+        mismatched_positive = make_verified_event(
+            "fork_missed",
+            event_impact_for_side=None,
+            impact_magnitude=None,
+            event_score_kind="mate",
+            event_impact_rank_for_side=9_999_998,
+            impact_rank=9_999_998,
+        )
+        missing_rank = make_verified_event(
+            "fork_missed",
+            event_impact_for_side=None,
+            impact_magnitude=None,
+            event_score_kind="mate",
+            event_impact_rank_for_side=-9_999_998,
+            impact_rank=None,
+        )
+
+        self.assertTrue(policy.is_relevant(relevant_negative))
+        self.assertFalse(policy.is_relevant(mismatched_positive))
+        self.assertFalse(policy.is_relevant(missing_rank))
 
     def test_negative_threshold_raises_value_error(self) -> None:
         with self.assertRaises(ValueError):

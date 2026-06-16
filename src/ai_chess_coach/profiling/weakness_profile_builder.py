@@ -55,7 +55,7 @@ def _profile_patterns(
             DetectedPattern(
                 pattern_type=pattern.pattern_type,
                 frequency=len(supporting_events),
-                severity=_average_impact_magnitude(supporting_events),
+                severity=_average_profile_impact(supporting_events),
                 supporting_events=supporting_events,
             )
         )
@@ -63,11 +63,22 @@ def _profile_patterns(
     return profile_patterns
 
 
-def _average_impact_magnitude(events) -> float:
+def _average_profile_impact(events) -> float:
     return float(
-        sum(event.engine_assessment.impact_magnitude for event in events)
+        sum(_profile_impact(event) for event in events)
         / len(events)
     )
+
+
+def _profile_impact(event) -> int:
+    if event.engine_assessment.event_score_kind == "mate":
+        impact_rank = event.engine_assessment.impact_rank
+        assert impact_rank is not None
+        return impact_rank
+
+    impact_magnitude = event.engine_assessment.impact_magnitude
+    assert impact_magnitude is not None
+    return impact_magnitude
 
 
 def _validated_patterns(patterns: Iterable[DetectedPattern]) -> list[DetectedPattern]:

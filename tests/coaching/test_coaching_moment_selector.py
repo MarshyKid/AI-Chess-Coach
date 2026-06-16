@@ -33,6 +33,9 @@ def make_verified_event(
     eval_delta_for_event_side: int | None = -100,
     event_impact_for_side: int | None = None,
     impact_magnitude: int | None = 100,
+    event_score_kind: str = "centipawn",
+    event_impact_rank_for_side: int | None = None,
+    impact_rank: int | None = None,
 ) -> VerifiedEvent:
     computed_event_impact_for_side = (
         event_impact_for_side
@@ -66,6 +69,9 @@ def make_verified_event(
             eval_delta_for_event_side=eval_delta_for_event_side,
             impact_magnitude=impact_magnitude,
             event_impact_for_side=computed_event_impact_for_side,
+            event_score_kind=event_score_kind,  # type: ignore[arg-type]
+            event_impact_rank_for_side=event_impact_rank_for_side,
+            impact_rank=impact_rank,
         ),
     )
 
@@ -225,6 +231,28 @@ class CoachingMomentSelectorTest(unittest.TestCase):
             (600, 500, 400, 300, 200),
         )
         self.assertTrue(all(len(group.events) == 1 for group in groups))
+
+    def test_mate_ranked_events_sort_above_centipawn_events(self) -> None:
+        mate_event = make_verified_event(
+            "fork_missed",
+            move_uci="g1f3",
+            event_impact_for_side=None,
+            impact_magnitude=None,
+            event_score_kind="mate",
+            event_impact_rank_for_side=-9_999_998,
+            impact_rank=9_999_998,
+        )
+        centipawn_event = make_verified_event(
+            "hanging_piece_created",
+            event_impact_for_side=-900_000,
+            impact_magnitude=900_000,
+        )
+
+        groups = CoachingMomentSelector().select((centipawn_event, mate_event))
+
+        self.assertEqual(tuple(group.events[0] for group in groups), (mate_event, centipawn_event))
+        self.assertEqual(groups[0].event_score_kind, "mate")
+        self.assertEqual(groups[0].impact_rank, 9_999_998)
 
     def test_tie_breaking_uses_stable_event_fields(self) -> None:
         later_move = make_verified_event(

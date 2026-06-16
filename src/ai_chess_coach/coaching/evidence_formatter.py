@@ -132,6 +132,15 @@ def _format_knight_outpost_event(event: VerifiedEvent) -> str:
 
 def _format_fallback_event(event: VerifiedEvent) -> str:
     metadata = get_event_type_metadata(event.event.event_type)
+    if event.engine_assessment.event_score_kind == "mate":
+        impact_rank = event.engine_assessment.impact_rank
+        impact_text = "none" if impact_rank is None else str(impact_rank)
+
+        return (
+            f"{metadata.display_name}: selected event on move "
+            f"{event.event.metadata.move_san} with mate-aware rank impact {impact_text}"
+        )
+
     impact_magnitude = event.engine_assessment.impact_magnitude
     impact_text = "none" if impact_magnitude is None else str(impact_magnitude)
 

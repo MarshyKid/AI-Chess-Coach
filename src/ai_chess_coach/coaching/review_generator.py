@@ -54,6 +54,9 @@ def _explanation(group: VerifiedEventGroup) -> str:
     event_title = event.event.event_type.replace("_", " ").title()
     event_impact = event.engine_assessment.event_impact_for_side
     impact_magnitude = event.engine_assessment.impact_magnitude
+    if event.engine_assessment.event_score_kind == "mate":
+        return _mate_explanation(event)
+
     verification_kind = get_event_type_metadata(event.event.event_type).verification_kind
     if event_impact is None or impact_magnitude is None:
         return f"{event_title} was detected with detector severity {event.event.severity}."
@@ -77,6 +80,65 @@ def _explanation(group: VerifiedEventGroup) -> str:
         return f"This move helped the event side by about {impact_magnitude} centipawns."
 
     return f"{event_title} was detected with detector severity {event.event.severity}."
+
+
+def _mate_explanation(event: VerifiedEvent) -> str:
+    event_impact = event.engine_assessment.event_impact_rank_for_side
+    verification_kind = get_event_type_metadata(event.event.event_type).verification_kind
+    if event_impact is None:
+        event_title = event.event.event_type.replace("_", " ").title()
+        return f"{event_title} was detected with detector severity {event.event.severity}."
+
+    if verification_kind == "missed_candidate":
+        candidate_score = event.engine_assessment.candidate_score_after
+        if candidate_score is not None and candidate_score.kind == "mate":
+            outcome = _mate_outcome(candidate_score, event.event.side)
+            if event_impact < 0:
+                return f"The candidate move led to {outcome}, which was better than the move played."
+
+            return f"The candidate move led to {outcome}, but was worse than the move played."
+        if event_impact < 0:
+            return "The candidate move produced a better mate-aware outcome than the move played."
+
+        return "The candidate move produced a worse mate-aware outcome than the move played."
+
+    if verification_kind == "allowed_response":
+        candidate_score = event.engine_assessment.candidate_score_after
+        if candidate_score is not None and candidate_score.kind == "mate":
+            outcome = _mate_outcome(candidate_score, event.event.side)
+            if event_impact < 0:
+                return f"After this move, the opponent had a reply leading to {outcome}."
+
+            return f"The opponent reply led to {outcome}, but did not improve over the played position."
+        if event_impact < 0:
+            return "After this move, the opponent had a mate-aware reply."
+
+        return "The opponent reply did not improve over the played position in mate-aware terms."
+
+    after_score = event.engine_assessment.score_after
+    if after_score is not None and after_score.kind == "mate":
+        outcome = _mate_outcome(after_score, event.event.side)
+        if event_impact < 0:
+            return f"This move led to {outcome}."
+
+        return f"This move led to {outcome}."
+
+    if event_impact < 0:
+        return "This move worsened the event side's position in mate-aware terms."
+
+    return "This move improved the event side's position in mate-aware terms."
+
+
+def _mate_outcome(score, side: chess.Color) -> str:
+    side_score = score.for_side(side)
+    if side_score.mate is None:
+        return "a mate-aware outcome"
+    if side_score.mate > 0:
+        return f"a forced mate for the event side in {side_score.mate}"
+    if side_score.mate < 0:
+        return f"a forced mate against the event side in {abs(side_score.mate)}"
+
+    return "a forced mate for the event side"
 
 
 def _position_reference(group: VerifiedEventGroup) -> str:

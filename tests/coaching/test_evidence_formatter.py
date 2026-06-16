@@ -23,6 +23,8 @@ def make_verified_event(
     evidence: dict[str, object] | None = None,
     move_san: str = "e4",
     impact_magnitude: int | None = 120,
+    event_score_kind: str = "centipawn",
+    impact_rank: int | None = None,
 ) -> VerifiedEvent:
     move = chess.Move.from_uci("e2e4")
     return VerifiedEvent(
@@ -51,6 +53,8 @@ def make_verified_event(
             depth=10,
             eval_delta_for_event_side=impact_magnitude,
             impact_magnitude=impact_magnitude,
+            event_score_kind=event_score_kind,  # type: ignore[arg-type]
+            impact_rank=impact_rank,
         ),
     )
 
@@ -170,6 +174,23 @@ class EvidenceFormatterTest(unittest.TestCase):
             detail,
             "New Event Type: selected event on move Nf3 with impact 95 centipawns",
         )
+
+    def test_formats_unknown_mate_event_without_centipawn_language(self) -> None:
+        event = make_verified_event(
+            "new_event_type",
+            move_san="Nf3",
+            impact_magnitude=None,
+            event_score_kind="mate",
+            impact_rank=9_999_998,
+        )
+
+        detail = format_supporting_event_detail(event)
+
+        self.assertEqual(
+            detail,
+            "New Event Type: selected event on move Nf3 with mate-aware rank impact 9999998",
+        )
+        self.assertNotIn("centipawns", detail)
 
     def test_format_coaching_moment_details_returns_one_line_per_verified_event(
         self,

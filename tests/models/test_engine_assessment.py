@@ -4,7 +4,7 @@ from pathlib import Path
 
 import chess
 
-from ai_chess_coach.models import EngineAssessment
+from ai_chess_coach.models import EngineAssessment, EngineScore
 
 
 class EngineAssessmentTest(unittest.TestCase):
@@ -28,6 +28,12 @@ class EngineAssessmentTest(unittest.TestCase):
             candidate_move_uci="d2d4",
             candidate_after_fen="candidate-after-fen",
             event_impact_for_side=-40,
+            score_before=EngineScore(centipawns=25),
+            score_after=EngineScore(centipawns=80),
+            candidate_score_after=EngineScore(centipawns=120),
+            event_score_kind="centipawn",
+            event_impact_rank_for_side=-40,
+            impact_rank=40,
         )
 
         self.assertEqual(assessment.eval_before, 25)
@@ -42,6 +48,12 @@ class EngineAssessmentTest(unittest.TestCase):
         self.assertEqual(assessment.candidate_move_uci, "d2d4")
         self.assertEqual(assessment.candidate_after_fen, "candidate-after-fen")
         self.assertEqual(assessment.event_impact_for_side, -40)
+        self.assertEqual(assessment.score_before, EngineScore(centipawns=25))
+        self.assertEqual(assessment.score_after, EngineScore(centipawns=80))
+        self.assertEqual(assessment.candidate_score_after, EngineScore(centipawns=120))
+        self.assertEqual(assessment.event_score_kind, "centipawn")
+        self.assertEqual(assessment.event_impact_rank_for_side, -40)
+        self.assertEqual(assessment.impact_rank, 40)
 
     def test_supports_missing_evals_best_move_and_depth(self) -> None:
         assessment = EngineAssessment(
@@ -65,6 +77,12 @@ class EngineAssessmentTest(unittest.TestCase):
         self.assertIsNone(assessment.candidate_move_uci)
         self.assertIsNone(assessment.candidate_after_fen)
         self.assertIsNone(assessment.event_impact_for_side)
+        self.assertIsNone(assessment.score_before)
+        self.assertIsNone(assessment.score_after)
+        self.assertIsNone(assessment.candidate_score_after)
+        self.assertEqual(assessment.event_score_kind, "unavailable")
+        self.assertIsNone(assessment.event_impact_rank_for_side)
+        self.assertIsNone(assessment.impact_rank)
 
     def test_principal_variation_is_stored_as_tuple_of_chess_moves(self) -> None:
         principal_variation = (

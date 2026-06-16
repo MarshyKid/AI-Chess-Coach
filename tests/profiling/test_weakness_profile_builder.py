@@ -21,6 +21,9 @@ def make_verified_event(
     event_impact_for_side: int | None = -100,
     impact_magnitude: int | None = 100,
     move_uci: str = "e2e4",
+    event_score_kind: str = "centipawn",
+    event_impact_rank_for_side: int | None = None,
+    impact_rank: int | None = None,
 ) -> VerifiedEvent:
     return VerifiedEvent(
         event=DetectedEvent(
@@ -48,6 +51,9 @@ def make_verified_event(
             depth=None,
             impact_magnitude=impact_magnitude,
             event_impact_for_side=event_impact_for_side,
+            event_score_kind=event_score_kind,  # type: ignore[arg-type]
+            event_impact_rank_for_side=event_impact_rank_for_side,
+            impact_rank=impact_rank,
         ),
     )
 
@@ -285,6 +291,23 @@ class WeaknessProfileBuilderTest(unittest.TestCase):
 
         self.assertEqual(profile_pattern.frequency, 2)
         self.assertEqual(profile_pattern.severity, 200.0)
+
+    def test_profile_pattern_severity_uses_mate_rank_for_mate_events(self) -> None:
+        event = make_verified_event(
+            "fork_missed",
+            event_impact_for_side=None,
+            impact_magnitude=None,
+            event_score_kind="mate",
+            event_impact_rank_for_side=-9_999_998,
+            impact_rank=9_999_998,
+        )
+        pattern = make_pattern("fork_missed", supporting_events=(event,))
+
+        profile_pattern = WeaknessProfileBuilder().build((pattern,)).weaknesses[0]
+
+        self.assertEqual(profile_pattern.frequency, 1)
+        self.assertEqual(profile_pattern.severity, 9_999_998.0)
+        self.assertEqual(profile_pattern.supporting_events, (event,))
 
     def test_custom_relevance_policy_is_used(self) -> None:
         event = make_verified_event(

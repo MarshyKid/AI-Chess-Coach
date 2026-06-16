@@ -289,16 +289,15 @@ supporting events pass `CoachingRelevancePolicy`.
 Shared relevance rules:
 
 - skip neutral or unknown event types
-- skip missing `event_impact_for_side`
-- skip missing `impact_magnitude`
-- skip events below the configured impact threshold
-- positive events require `event_impact_for_side > 0`
-- negative events require `event_impact_for_side < 0`
+- skip missing centipawn impact or mate-aware rank impact
+- skip centipawn events below the configured impact threshold
+- positive events require canonical signed impact greater than zero
+- negative events require canonical signed impact less than zero
 
 Profile-local pattern recomputation:
 
 - `frequency` is the count of filtered supporting events
-- `severity` is the average `impact_magnitude`
+- `severity` is the average centipawn `impact_magnitude` or mate-aware `impact_rank`
 - `supporting_events` preserves filtered supporting events in original order
 
 Known limitations:
@@ -306,17 +305,89 @@ Known limitations:
 - Positive execution events like `fork_created` can still be underrepresented
   when their immediate engine impact is low. Tactical sequence and narrative
   linking are deferred.
-- Mate scores that produce missing impact are still filtered out. Mate-aware
-  engine assessment is deferred and missing impact must not be treated as proof
-  that an event is unimportant.
 
 Rules:
 
 - Do not mutate raw detected patterns.
 - Do not change detector semantics or event type names.
 - Do not change engine verification.
-- Do not add mate-aware scoring in this task.
 - Do not add tactical sequence linking in this task.
+- Do not add LLM calls, frontend, API, database, auth, deployment, or new detectors.
+
+---
+
+## Task 26G — Mate-Aware Engine Assessment
+
+Status: complete and accepted after implementation
+
+Dependencies:
+
+- Task 26D
+- Task 26E
+
+Goal:
+
+Preserve mate scores as first-class engine evidence and make selection/profile
+ranking work for centipawn, mate, and mixed centipawn-vs-mate comparisons.
+
+Important outcome:
+
+`EngineScore` stores one of:
+
+- centipawns
+- mate
+- unavailable
+
+Internal rank formula:
+
+```text
+centipawns      -> centipawns
+mate > 0        -> 10_000_000 - abs(mate)
+mate < 0        -> -10_000_000 + abs(mate)
+mate == 0       -> 10_000_000
+unavailable     -> None
+```
+
+Rank values are internal ordering values. They are not centipawns and must not
+be displayed as centipawn values.
+
+`EngineAssessment` includes:
+
+- `score_before`
+- `score_after`
+- `candidate_score_after`
+- `event_score_kind`
+- `event_impact_rank_for_side`
+- `impact_rank`
+
+`event_score_kind="mate"` means the event comparison involved at least one mate
+score.
+
+Rank impact formulas:
+
+```text
+actual_move       -> after_rank_for_side - before_rank_for_side
+missed_candidate  -> actual_after_rank_for_side - candidate_after_rank_for_side
+allowed_response  -> candidate_after_rank_for_side - actual_after_rank_for_side
+```
+
+Sign semantics:
+
+- positive `event_impact_rank_for_side`: improved the attributed side's position
+- negative `event_impact_rank_for_side`: worsened the attributed side's position
+- zero: no rank change
+- `None`: unavailable
+
+Selection behavior:
+
+- centipawn comparisons use `event_impact_for_side` and `impact_magnitude`
+- mate comparisons use `event_impact_rank_for_side` and `impact_rank`
+- selector and profile builder remain metadata/rank-only and chess-analysis-free
+
+Rules:
+
+- Do not change detector semantics or event type names.
+- Do not add synthetic centipawn display for mate scores.
 - Do not add LLM calls, frontend, API, database, auth, deployment, or new detectors.
 
 ---
@@ -327,7 +398,7 @@ Status: next planned task
 
 Dependencies:
 
-- Tasks 21-26E
+- Tasks 21-26G
 
 Goal:
 

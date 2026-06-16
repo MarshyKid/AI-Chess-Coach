@@ -11,7 +11,14 @@ from ai_chess_coach.engine import (
     EventVerifier,
     StockfishAnalysis,
 )
-from ai_chess_coach.models import CandidateMove, DetectedEvent, EventMetadata, VerifiedEvent
+from ai_chess_coach.models import (
+    CandidateMove,
+    DetectedEvent,
+    EngineScore,
+    EventMetadata,
+    MATE_RANK_BASE,
+    VerifiedEvent,
+)
 
 
 def make_event(
@@ -106,6 +113,9 @@ class EventVerifierTest(unittest.TestCase):
         self.assertEqual(assessment.eval_before, -15)
         self.assertEqual(assessment.eval_after, 35)
         self.assertEqual(assessment.eval_delta, 50)
+        self.assertEqual(assessment.score_before, EngineScore(centipawns=-15))
+        self.assertEqual(assessment.score_after, EngineScore(centipawns=35))
+        self.assertEqual(assessment.event_score_kind, "centipawn")
 
     def test_computes_side_aware_delta_for_white_attributed_event(self) -> None:
         engine = Mock()
@@ -122,6 +132,8 @@ class EventVerifierTest(unittest.TestCase):
         self.assertEqual(assessment.eval_delta_for_event_side, 50)
         self.assertEqual(assessment.event_impact_for_side, 50)
         self.assertEqual(assessment.impact_magnitude, 50)
+        self.assertEqual(assessment.event_impact_rank_for_side, 50)
+        self.assertEqual(assessment.impact_rank, 50)
 
     def test_computes_side_aware_delta_for_black_attributed_event(self) -> None:
         engine = Mock()
@@ -138,6 +150,8 @@ class EventVerifierTest(unittest.TestCase):
         self.assertEqual(assessment.eval_delta_for_event_side, -50)
         self.assertEqual(assessment.event_impact_for_side, -50)
         self.assertEqual(assessment.impact_magnitude, 50)
+        self.assertEqual(assessment.event_impact_rank_for_side, -50)
+        self.assertEqual(assessment.impact_rank, 50)
 
     def test_black_attributed_event_improves_when_white_perspective_delta_is_negative(
         self,
@@ -213,6 +227,10 @@ class EventVerifierTest(unittest.TestCase):
         self.assertEqual(assessment.candidate_move_uci, "d2d4")
         self.assertEqual(assessment.event_impact_for_side, -300)
         self.assertEqual(assessment.impact_magnitude, 300)
+        self.assertEqual(assessment.candidate_score_after, EngineScore(centipawns=400))
+        self.assertEqual(assessment.event_score_kind, "centipawn")
+        self.assertEqual(assessment.event_impact_rank_for_side, -300)
+        self.assertEqual(assessment.impact_rank, 300)
 
     def test_knight_outpost_missed_uses_missed_candidate_strategy(self) -> None:
         engine = Mock()
@@ -340,22 +358,168 @@ class EventVerifierTest(unittest.TestCase):
         self.assertIsNone(assessment.eval_delta_for_event_side)
         self.assertIsNone(assessment.impact_magnitude)
         self.assertIsNone(assessment.event_impact_for_side)
+        self.assertEqual(assessment.score_before, EngineScore())
+        self.assertEqual(assessment.score_after, EngineScore(centipawns=20))
+        self.assertEqual(assessment.event_score_kind, "unavailable")
+        self.assertIsNone(assessment.event_impact_rank_for_side)
+        self.assertIsNone(assessment.impact_rank)
 
-    def test_mate_scores_produce_none_eval_and_delta(self) -> None:
+    def test_mate_scores_are_represented_and_ranked_for_actual_move(self) -> None:
         engine = Mock()
         engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
             analysis(chess.engine.PovScore(chess.engine.Mate(2), chess.WHITE)),
-            analysis(chess.engine.PovScore(chess.engine.Cp(20), chess.WHITE)),
         )
 
         assessment = EventVerifier(engine).verify(make_event()).engine_assessment
 
-        self.assertIsNone(assessment.eval_before)
-        self.assertEqual(assessment.eval_after, 20)
+        self.assertEqual(assessment.score_before, EngineScore(centipawns=0))
+        self.assertEqual(assessment.score_after, EngineScore(mate=2))
+        self.assertEqual(assessment.event_score_kind, "mate")
+        self.assertEqual(assessment.event_impact_rank_for_side, MATE_RANK_BASE - 2)
+        self.assertEqual(assessment.impact_rank, MATE_RANK_BASE - 2)
+        self.assertEqual(assessment.eval_before, 0)
+        self.assertIsNone(assessment.eval_after)
         self.assertIsNone(assessment.eval_delta)
         self.assertIsNone(assessment.eval_delta_for_event_side)
-        self.assertIsNone(assessment.impact_magnitude)
         self.assertIsNone(assessment.event_impact_for_side)
+        self.assertIsNone(assessment.impact_magnitude)
+
+    def test_actual_move_mate_comparison_flips_for_black_side(self) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Mate(2), chess.WHITE)),
+        )
+
+        assessment = (
+            EventVerifier(engine).verify(make_event(side=chess.BLACK)).engine_assessment
+        )
+
+        self.assertEqual(assessment.event_score_kind, "mate")
+        self.assertEqual(assessment.event_impact_rank_for_side, -MATE_RANK_BASE + 2)
+        self.assertEqual(assessment.impact_rank, MATE_RANK_BASE - 2)
+        self.assertIsNone(assessment.event_impact_for_side)
+        self.assertIsNone(assessment.impact_magnitude)
+
+    def test_mixed_mate_to_centipawn_actual_move_is_large_negative_rank(self) -> None:
+        engine = Mock()
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Mate(2), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+        )
+
+        assessment = EventVerifier(engine).verify(make_event()).engine_assessment
+
+        self.assertEqual(assessment.event_score_kind, "mate")
+        self.assertEqual(
+            assessment.event_impact_rank_for_side,
+            100 - (MATE_RANK_BASE - 2),
+        )
+        self.assertEqual(assessment.impact_rank, MATE_RANK_BASE - 102)
+
+    def test_missed_candidate_can_compare_candidate_mate_from_before_position(self) -> None:
+        engine = Mock()
+        candidate_fen = candidate_after_fen(chess.STARTING_FEN, "d2d4")
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Mate(2), chess.WHITE)),
+        )
+
+        assessment = EventVerifier(engine).verify(
+            make_event(
+                event_type="fork_missed",
+                candidate_move=CandidateMove(
+                    move_uci="d2d4",
+                    move_san="d4",
+                    start_fen=chess.STARTING_FEN,
+                    side=chess.WHITE,
+                ),
+            )
+        ).engine_assessment
+
+        self.assertEqual(engine.evaluate_fen.call_args_list[-1], call(candidate_fen))
+        self.assertEqual(assessment.candidate_score_after, EngineScore(mate=2))
+        self.assertEqual(assessment.candidate_eval_after, None)
+        self.assertEqual(assessment.event_score_kind, "mate")
+        self.assertEqual(
+            assessment.event_impact_rank_for_side,
+            100 - (MATE_RANK_BASE - 2),
+        )
+        self.assertEqual(assessment.impact_rank, MATE_RANK_BASE - 102)
+        self.assertIsNone(assessment.event_impact_for_side)
+        self.assertIsNone(assessment.impact_magnitude)
+
+    def test_missed_candidate_black_side_flips_mate_candidate_perspective(self) -> None:
+        engine = Mock()
+        before_fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+        after_fen = candidate_after_fen(before_fen, "e7e6")
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Mate(-2), chess.WHITE)),
+        )
+
+        assessment = EventVerifier(engine).verify(
+            make_event(
+                event_type="fork_missed",
+                side=chess.BLACK,
+                before_fen=before_fen,
+                after_fen=after_fen,
+                move_uci="e7e6",
+                move_san="e6",
+                candidate_move=CandidateMove(
+                    move_uci="e7e5",
+                    move_san="e5",
+                    start_fen=before_fen,
+                    side=chess.BLACK,
+                ),
+            )
+        ).engine_assessment
+
+        actual_after_for_black = -100
+        candidate_for_black = MATE_RANK_BASE - 2
+        self.assertEqual(assessment.event_score_kind, "mate")
+        self.assertEqual(
+            assessment.event_impact_rank_for_side,
+            actual_after_for_black - candidate_for_black,
+        )
+        self.assertEqual(assessment.impact_rank, abs(actual_after_for_black - candidate_for_black))
+
+    def test_allowed_response_can_compare_opponent_candidate_mate_from_after_position(
+        self,
+    ) -> None:
+        engine = Mock()
+        after_fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+        candidate_fen = candidate_after_fen(after_fen, "e7e5")
+        engine.evaluate_fen.side_effect = (
+            analysis(chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Cp(100), chess.WHITE)),
+            analysis(chess.engine.PovScore(chess.engine.Mate(-2), chess.WHITE)),
+        )
+
+        assessment = EventVerifier(engine).verify(
+            make_event(
+                event_type="fork_allowed",
+                after_fen=after_fen,
+                candidate_move=CandidateMove(
+                    move_uci="e7e5",
+                    move_san="e5",
+                    start_fen=after_fen,
+                    side=chess.BLACK,
+                ),
+            )
+        ).engine_assessment
+
+        self.assertEqual(engine.evaluate_fen.call_args_list[-1], call(candidate_fen))
+        self.assertEqual(assessment.candidate_score_after, EngineScore(mate=-2))
+        self.assertEqual(assessment.event_score_kind, "mate")
+        self.assertEqual(
+            assessment.event_impact_rank_for_side,
+            (-MATE_RANK_BASE + 2) - 100,
+        )
+        self.assertEqual(assessment.impact_rank, MATE_RANK_BASE + 98)
 
     def test_candidate_score_unavailable_produces_none_event_impact(self) -> None:
         engine = Mock()

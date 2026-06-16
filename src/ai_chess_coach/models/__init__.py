@@ -5,6 +5,7 @@ from ai_chess_coach.models.coaching_moment import CoachingMoment
 from ai_chess_coach.models.detected_pattern import DetectedPattern
 from ai_chess_coach.models.detected_event import DetectedEvent
 from ai_chess_coach.models.engine_assessment import EngineAssessment
+from ai_chess_coach.models.engine_score import EngineScore, MATE_RANK_BASE, ScoreKind
 from ai_chess_coach.models.event_metadata import EventMetadata
 from ai_chess_coach.models.event_type_metadata import (
     EventPolarity,
@@ -32,13 +33,16 @@ __all__ = [
     "DetectedPattern",
     "DetectedEvent",
     "EngineAssessment",
+    "EngineScore",
     "EventPolarity",
     "EventMetadata",
     "EventTypeMetadata",
     "GameAnalysisResult",
+    "MATE_RANK_BASE",
     "MoveTransition",
     "PieceSafety",
     "PositionAnalysis",
+    "ScoreKind",
     "VerifiedEvent",
     "VerificationKind",
     "WeaknessProfile",

@@ -367,6 +367,46 @@ metadata for deterministic backward compatibility.
 
 # Verification Models
 
+## EngineScore
+
+Represents one raw engine score from White's perspective.
+
+Expected file:
+
+```text
+src/ai_chess_coach/models/engine_score.py
+```
+
+Fields:
+
+- `centipawns`
+- `mate`
+
+Derived behavior:
+
+- `kind`
+- `rank_value()`
+- `for_side(side)`
+
+Exactly one of `centipawns` or `mate` may be set. If neither is set, the score
+is unavailable.
+
+`rank_value()` is an internal ordering value:
+
+```text
+centipawn score -> centipawns
+mate > 0        -> 10_000_000 - abs(mate)
+mate < 0        -> -10_000_000 + abs(mate)
+mate == 0       -> 10_000_000
+unavailable     -> None
+```
+
+Rank values are not centipawns and must not be presented as centipawn values in
+user-facing text. They exist only to compare centipawn and mate outcomes
+deterministically for verification, selection, and profile ordering.
+
+---
+
 ## EngineAssessment
 
 Represents objective engine evidence for a position or event.
@@ -393,6 +433,12 @@ Fields:
 - `candidate_after_fen`
 - `event_impact_for_side`
 - `impact_magnitude`
+- `score_before`
+- `score_after`
+- `candidate_score_after`
+- `event_score_kind`
+- `event_impact_rank_for_side`
+- `impact_rank`
 - `best_move`
 - `principal_variation`
 
@@ -408,6 +454,20 @@ candidate and allowed-response events compare the actual position with the
 candidate line represented by `CandidateMove`.
 
 `impact_magnitude` is `abs(event_impact_for_side)` when available.
+
+`event_score_kind` is:
+
+- `centipawn` when the event comparison used only centipawn scores.
+- `mate` when the event comparison involved at least one mate score.
+- `unavailable` when required score data is missing.
+
+`event_impact_rank_for_side` is the canonical mate-aware signed impact. Positive
+means the event comparison improved the attributed side's position. Negative
+means it worsened the attributed side's position. Zero means no rank change.
+`impact_rank` is `abs(event_impact_rank_for_side)` when available.
+
+Rank fields are internal ordering values. They are not centipawns and must not
+be labeled or explained as centipawn values.
 
 Rules:
 
@@ -509,8 +569,8 @@ Rules:
 - Built from detected patterns and verified events.
 - User-facing fields contain profile-local `DetectedPattern` objects whose
   supporting events passed `CoachingRelevancePolicy`.
-- Profile-local pattern severity is the average `impact_magnitude` of filtered
-  supporting events.
+- Profile-local pattern severity is the average centipawn `impact_magnitude` for
+  centipawn events or average mate-aware `impact_rank` for mate-scored events.
 - Neutral or unknown event types are excluded from user-facing profile fields.
 - Raw `GameAnalysisResult.detected_patterns` remains the debugging source for
   unfiltered patterns.

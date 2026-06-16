@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from ai_chess_coach.models import (
     EventPolarity,
+    ScoreKind,
     VerifiedEvent,
     get_event_type_metadata,
 )
@@ -20,7 +21,9 @@ class VerifiedEventGroup:
     events: tuple[VerifiedEvent, ...]
     category: str
     polarity: EventPolarity
-    impact_magnitude: int
+    impact_magnitude: int | None
+    event_score_kind: ScoreKind = "centipawn"
+    impact_rank: int | None = None
 
 
 class CoachingMomentSelector:
@@ -58,7 +61,7 @@ class CoachingMomentSelector:
 
             event_type_metadata = get_event_type_metadata(event.event.event_type)
             impact_magnitude = event.engine_assessment.impact_magnitude
-            assert impact_magnitude is not None
+            impact_rank = _selection_rank(event)
 
             selected_groups.append(
                 VerifiedEventGroup(
@@ -66,20 +69,35 @@ class CoachingMomentSelector:
                     category=event_type_metadata.category,
                     polarity=event_type_metadata.polarity,
                     impact_magnitude=impact_magnitude,
+                    event_score_kind=event.engine_assessment.event_score_kind,
+                    impact_rank=impact_rank,
                 )
             )
 
         return tuple(sorted(selected_groups, key=_sort_key)[: self.max_moments])
 
 
+def _selection_rank(event: VerifiedEvent) -> int:
+    if event.engine_assessment.event_score_kind == "mate":
+        impact_rank = event.engine_assessment.impact_rank
+        assert impact_rank is not None
+        return impact_rank
+
+    impact_magnitude = event.engine_assessment.impact_magnitude
+    assert impact_magnitude is not None
+    return impact_magnitude
+
+
 def _sort_key(
     group: VerifiedEventGroup,
-) -> tuple[int, int, str, str, str, str, str, tuple[int, ...]]:
+) -> tuple[int, int, int, str, str, str, str, str, tuple[int, ...]]:
     first_event = group.events[0].event
     side_name = "white" if first_event.side else "black"
+    score_kind_priority = 0 if group.event_score_kind == "mate" else 1
 
     return (
-        -group.impact_magnitude,
+        score_kind_priority,
+        -(group.impact_rank if group.impact_rank is not None else 0),
         first_event.metadata.ply,
         side_name,
         group.category,

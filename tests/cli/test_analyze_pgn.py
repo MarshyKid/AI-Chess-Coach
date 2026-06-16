@@ -24,6 +24,7 @@ from ai_chess_coach.models import (
     DetectedEvent,
     DetectedPattern,
     EngineAssessment,
+    EngineScore,
     EventMetadata,
     GameAnalysisResult,
     MoveTransition,
@@ -71,7 +72,9 @@ class AnalyzePgnCliTest(unittest.TestCase):
         self.assertIn("Verified Events (1)", output)
         self.assertIn(
             "- hanging_piece_created eval_before=10 eval_after=-40 eval_delta=-50 "
-            "event_impact_for_side=-50 impact_magnitude=50 candidate_move=none "
+            "event_impact_for_side=-50 impact_magnitude=50 score_kind=centipawn "
+            "event_impact_rank_for_side=-50 impact_rank=50 candidate_move=none "
+            "score_before=10cp score_after=-40cp candidate_score_after=none "
             "best_move=e2e4 depth=12",
             output,
         )
@@ -123,6 +126,43 @@ class AnalyzePgnCliTest(unittest.TestCase):
         self.assertIn("Verified Events (2)", output)
         self.assertIn("Coaching Moments (1)", output)
         self.assertEqual(output.count("    - hanging_piece_created:"), 1)
+
+    def test_format_result_labels_mate_rank_values_without_centipawn_language(self) -> None:
+        base_result = populated_result()
+        event = base_result.verified_events[0].event
+        verified_event = VerifiedEvent(
+            event=event,
+            engine_assessment=EngineAssessment(
+                eval_before=0,
+                eval_after=None,
+                eval_delta=None,
+                best_move=event.move,
+                principal_variation=(event.move,),
+                depth=12,
+                score_before=EngineScore(centipawns=0),
+                score_after=EngineScore(mate=-2),
+                event_score_kind="mate",
+                event_impact_rank_for_side=-9_999_998,
+                impact_rank=9_999_998,
+            ),
+        )
+        result = GameAnalysisResult(
+            transitions=base_result.transitions,
+            detected_events=base_result.detected_events,
+            verified_events=(verified_event,),
+            detected_patterns=base_result.detected_patterns,
+            weakness_profile=base_result.weakness_profile,
+            coaching_moments=(),
+        )
+
+        output = analyze_pgn.format_result(result)
+
+        self.assertIn("score_kind=mate", output)
+        self.assertIn("event_impact_rank_for_side=-9999998", output)
+        self.assertIn("impact_rank=9999998", output)
+        self.assertIn("score_after=mate-2", output)
+        self.assertNotIn("rank_for_side=-9999998 centipawns", output)
+        self.assertNotIn("impact_rank=9999998 centipawns", output)
 
     def test_main_success_reads_file_runs_pipeline_prints_result_and_closes_engine(self) -> None:
         fake_engine = FakeEngine()
@@ -299,6 +339,11 @@ def populated_result() -> GameAnalysisResult:
             eval_delta_for_event_side=-50,
             impact_magnitude=50,
             event_impact_for_side=-50,
+            score_before=EngineScore(centipawns=10),
+            score_after=EngineScore(centipawns=-40),
+            event_score_kind="centipawn",
+            event_impact_rank_for_side=-50,
+            impact_rank=50,
         ),
     )
     pattern = DetectedPattern(

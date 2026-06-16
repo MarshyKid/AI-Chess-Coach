@@ -52,7 +52,7 @@ eval_delta = eval_after - eval_before
 
 `EngineAssessment.eval_delta_for_event_side` remains the actual played move delta from the attributed event side's perspective. It is useful for debugging actual-move events and keeping compatibility with earlier tasks.
 
-For coaching selection, the canonical field is:
+For centipawn-only comparisons, the canonical field is:
 
 ```text
 event_impact_for_side
@@ -66,6 +66,31 @@ negative event_impact_for_side -> worse for the attributed side
 ```
 
 `impact_magnitude` is `abs(event_impact_for_side)` when available.
+
+For comparisons that involve at least one mate score, the canonical fields are:
+
+```text
+event_score_kind = "mate"
+event_impact_rank_for_side
+impact_rank
+```
+
+`event_score_kind="mate"` means the event comparison involved at least one mate
+score, including mixed centipawn-vs-mate comparisons.
+
+Interpretation:
+
+```text
+positive event_impact_rank_for_side -> better for the attributed side
+negative event_impact_rank_for_side -> worse for the attributed side
+zero event_impact_rank_for_side     -> no rank change
+None                                -> unavailable
+```
+
+`impact_rank` is `abs(event_impact_rank_for_side)` when available.
+
+Rank values are internal ordering values. They are not centipawns and must never
+be labeled as centipawn values in coaching output.
 
 ## Verification Kinds
 
@@ -92,6 +117,12 @@ before_fen -> after_fen
 ```
 
 For these events, `event_impact_for_side` is the actual-move delta from the event side's perspective.
+
+For mate-aware comparisons:
+
+```text
+event_impact_rank_for_side = after_rank_for_side - before_rank_for_side
+```
 
 ### missed_candidate
 
@@ -120,6 +151,12 @@ event_impact_for_side = actual_after_for_event_side - candidate_after_for_event_
 
 A negative value means missing the candidate hurt the attributed side. A positive value means the candidate was worse than the move played and should not be promoted as a negative coaching moment.
 
+For mate-aware comparisons:
+
+```text
+event_impact_rank_for_side = actual_after_rank_for_side - candidate_after_rank_for_side
+```
+
 ### allowed_response
 
 The played move allowed the opponent a dangerous candidate reply.
@@ -145,21 +182,27 @@ event_impact_for_side = candidate_after_for_event_side - actual_after_for_event_
 
 A negative value means the opponent reply would hurt the side who allowed it.
 
+For mate-aware comparisons:
+
+```text
+event_impact_rank_for_side = candidate_after_rank_for_side - actual_after_rank_for_side
+```
+
 ## Current Selection Rules
 
 The current selector is deterministic and intentionally simple.
 
 Rules:
 
-1. Use `event_impact_for_side` from engine verification.
+1. Use centipawn `event_impact_for_side` for centipawn-only comparisons, or mate-aware `event_impact_rank_for_side` for mate comparisons.
 2. Look up event type polarity from `EventTypeMetadata`.
 3. Skip neutral or unknown event types.
-4. Skip events with no `event_impact_for_side` or missing `impact_magnitude`.
-5. Filter out low-impact events below the configured threshold, currently defaulting to 80 centipawns.
+4. Skip events with no usable centipawn impact or mate-aware rank impact.
+5. Filter out low-impact centipawn events below the configured threshold, currently defaulting to 80 centipawns. Mate events use rank impact and are not compared to centipawn thresholds.
 6. Filter out polarity-mismatched events:
-   - positive event type but `event_impact_for_side <= 0`
-   - negative event type but `event_impact_for_side >= 0`
-7. Rank selected events by `impact_magnitude` descending, with deterministic tie-breakers.
+   - positive event type but canonical signed impact is not positive
+   - negative event type but canonical signed impact is not negative
+7. Rank selected events by mate-aware `impact_rank` first, then centipawn `impact_magnitude`, with deterministic tie-breakers.
 8. Limit the review to a small number of moments, currently defaulting to top 5.
 
 ## Coaching Relevance Policy
@@ -175,6 +218,9 @@ already verified evidence:
 VerifiedEvent.event.event_type
 EngineAssessment.event_impact_for_side
 EngineAssessment.impact_magnitude
+EngineAssessment.event_score_kind
+EngineAssessment.event_impact_rank_for_side
+EngineAssessment.impact_rank
 EventTypeMetadata.polarity
 ```
 
@@ -192,7 +238,7 @@ only relevant positive or negative profile-local patterns.
 Profile-local pattern fields are recomputed from filtered supporting events:
 
 - `frequency`: number of relevant supporting events
-- `severity`: average `impact_magnitude` of relevant supporting events
+- `severity`: average centipawn `impact_magnitude` for centipawn events or average mate-aware `impact_rank` for mate events
 - `supporting_events`: the relevant supporting events in original order
 
 Neutral or unknown event types are excluded from user-facing strengths,
@@ -227,11 +273,9 @@ tactic, not when the player executed it. Task 26E does not artificially boost
 those events. User-facing strengths may underrepresent low-impact execution
 events until a later tactical sequence or narrative-linking task.
 
-Mate scores are not yet represented as first-class impact values. If engine
-verification cannot convert a mate score into `event_impact_for_side` and
-`impact_magnitude`, the relevance policy filters that event out for now. This
-must not be interpreted as the event being unimportant; mate-aware scoring is a
-future engine assessment task.
+Mate scores are now represented as structured scores and internal rank values.
+Those rank values are not centipawns. Future prompt and UI work must describe
+mate outcomes as mate outcomes, not as synthetic centipawn swings.
 
 ## Future Grouping Design
 

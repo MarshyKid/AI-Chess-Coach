@@ -24,14 +24,23 @@ class CoachingRelevancePolicy:
         if event_type_metadata.polarity == "neutral":
             return False
 
-        impact_magnitude = event.engine_assessment.impact_magnitude
-        if impact_magnitude is None or impact_magnitude < self.min_impact_centipawns:
+        assessment = event.engine_assessment
+        if assessment.event_score_kind == "mate":
+            event_impact = assessment.event_impact_rank_for_side
+            if event_impact is None or event_impact == 0 or assessment.impact_rank is None:
+                return False
+        elif assessment.event_score_kind == "centipawn":
+            impact_magnitude = assessment.impact_magnitude
+            if impact_magnitude is None or impact_magnitude < self.min_impact_centipawns:
+                return False
+
+            event_impact = assessment.event_impact_for_side
+        else:
             return False
 
-        event_impact_for_side = event.engine_assessment.event_impact_for_side
-        if event_impact_for_side is None:
+        if event_impact is None:
             return False
         if event_type_metadata.polarity == "positive":
-            return event_impact_for_side > 0
+            return event_impact > 0
 
-        return event_impact_for_side < 0
+        return event_impact < 0

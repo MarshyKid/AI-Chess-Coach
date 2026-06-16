@@ -103,6 +103,9 @@ class SelectingFakeEventVerifier:
                 eval_delta_for_event_side=side_delta,
                 impact_magnitude=abs(side_delta),
                 event_impact_for_side=side_delta,
+                event_score_kind="centipawn",
+                event_impact_rank_for_side=side_delta,
+                impact_rank=abs(side_delta),
             ),
         )
 

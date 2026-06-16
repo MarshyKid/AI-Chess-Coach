@@ -17,7 +17,7 @@ from ai_chess_coach.detectors import (
     KnightOutpostDetector,
 )
 from ai_chess_coach.engine import EventVerifier, StockfishEngine, StockfishUnavailableError
-from ai_chess_coach.models import DetectedPattern, GameAnalysisResult, VerifiedEvent
+from ai_chess_coach.models import DetectedPattern, EngineScore, GameAnalysisResult, VerifiedEvent
 from ai_chess_coach.pipeline import GameAnalysisPipeline
 
 
@@ -152,7 +152,13 @@ def _format_verified_event(event: VerifiedEvent) -> str:
         f"eval_delta={_value(assessment.eval_delta)} "
         f"event_impact_for_side={_value(assessment.event_impact_for_side)} "
         f"impact_magnitude={_value(assessment.impact_magnitude)} "
+        f"score_kind={assessment.event_score_kind} "
+        f"event_impact_rank_for_side={_value(assessment.event_impact_rank_for_side)} "
+        f"impact_rank={_value(assessment.impact_rank)} "
         f"candidate_move={_value(assessment.candidate_move_uci)} "
+        f"score_before={_score(assessment.score_before)} "
+        f"score_after={_score(assessment.score_after)} "
+        f"candidate_score_after={_score(assessment.candidate_score_after)} "
         f"best_move={_move(assessment.best_move)} depth={_value(assessment.depth)}"
     )
 
@@ -194,6 +200,15 @@ def _value(value: object) -> str:
         return "none"
 
     return str(value)
+
+
+def _score(score: EngineScore | None) -> str:
+    if score is None or score.kind == "unavailable":
+        return "none"
+    if score.kind == "centipawn":
+        return f"{score.centipawns}cp"
+
+    return f"mate{score.mate:+d}"
 
 
 if __name__ == "__main__":
