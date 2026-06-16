@@ -477,6 +477,10 @@ Rules:
 
 - Built from verified events.
 - Should not be built directly from raw PGNs.
+- Raw patterns from `PatternAggregator` may include every verified event of a
+  type, including low-impact, neutral, or polarity-mismatched events.
+- Profile-local patterns inside `WeaknessProfile` are rebuilt from
+  coaching-relevant supporting events only.
 
 ---
 
@@ -496,14 +500,20 @@ src/ai_chess_coach/models/weakness_profile.py
 
 Fields:
 
-- `patterns`
 - `strengths`
 - `weaknesses`
-- `summary_stats`
+- `recurring_themes`
 
 Rules:
 
 - Built from detected patterns and verified events.
+- User-facing fields contain profile-local `DetectedPattern` objects whose
+  supporting events passed `CoachingRelevancePolicy`.
+- Profile-local pattern severity is the average `impact_magnitude` of filtered
+  supporting events.
+- Neutral or unknown event types are excluded from user-facing profile fields.
+- Raw `GameAnalysisResult.detected_patterns` remains the debugging source for
+  unfiltered patterns.
 - Must not be generated directly by an LLM.
 - Must not be built directly from raw PGNs.
 

@@ -100,6 +100,14 @@ class PatternAggregatorTest(unittest.TestCase):
 
         self.assertEqual(pattern.severity, 50.0)
 
+    def test_raw_aggregation_preserves_unknown_event_types(self) -> None:
+        event = make_verified_event("unregistered_debug_event", eval_delta=None)
+
+        pattern = PatternAggregator().aggregate((event,))[0]
+
+        self.assertEqual(pattern.pattern_type, "unregistered_debug_event")
+        self.assertEqual(pattern.supporting_events, (event,))
+
     def test_empty_input_returns_empty_tuple(self) -> None:
         patterns = PatternAggregator().aggregate(())
 

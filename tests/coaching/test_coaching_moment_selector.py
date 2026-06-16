@@ -11,6 +11,16 @@ from ai_chess_coach.models import (
     EventMetadata,
     VerifiedEvent,
 )
+from ai_chess_coach.relevance import CoachingRelevancePolicy
+
+
+class RejectAllPolicy:
+    def __init__(self) -> None:
+        self.events = []
+
+    def is_relevant(self, event: VerifiedEvent) -> bool:
+        self.events.append(event)
+        return False
 
 
 def make_verified_event(
@@ -65,6 +75,26 @@ class CoachingMomentSelectorTest(unittest.TestCase):
         event = make_verified_event("hanging_piece_created", impact_magnitude=79)
 
         groups = CoachingMomentSelector().select((event,))
+
+        self.assertEqual(groups, ())
+
+    def test_custom_relevance_policy_is_used_for_filtering(self) -> None:
+        event = make_verified_event(
+            "hanging_piece_created",
+            eval_delta_for_event_side=-100,
+            impact_magnitude=100,
+        )
+        policy = RejectAllPolicy()
+
+        groups = CoachingMomentSelector(relevance_policy=policy).select((event,))
+
+        self.assertEqual(groups, ())
+        self.assertEqual(policy.events, [event])
+
+    def test_default_policy_uses_existing_threshold_constructor_argument(self) -> None:
+        event = make_verified_event("hanging_piece_created", impact_magnitude=90)
+
+        groups = CoachingMomentSelector(min_impact_centipawns=100).select((event,))
 
         self.assertEqual(groups, ())
 
@@ -215,8 +245,23 @@ class CoachingMomentSelectorTest(unittest.TestCase):
         self.assertEqual(tuple(group.events[0] for group in groups), (earlier_move, later_move))
 
     def test_invalid_items_raise_type_error(self) -> None:
+        policy = RejectAllPolicy()
+
         with self.assertRaises(TypeError):
-            CoachingMomentSelector().select(("1. e4 e5",))  # type: ignore[arg-type]
+            CoachingMomentSelector(relevance_policy=policy).select(("1. e4 e5",))  # type: ignore[arg-type]
+
+        self.assertEqual(policy.events, [])
+
+    def test_injected_policy_owns_threshold_behavior(self) -> None:
+        event = make_verified_event("hanging_piece_created", impact_magnitude=90)
+        policy = CoachingRelevancePolicy(min_impact_centipawns=80)
+
+        groups = CoachingMomentSelector(
+            min_impact_centipawns=100,
+            relevance_policy=policy,
+        ).select((event,))
+
+        self.assertEqual(len(groups), 1)
 
     def test_selector_is_exported_from_coaching_package(self) -> None:
         import ai_chess_coach.coaching as coaching

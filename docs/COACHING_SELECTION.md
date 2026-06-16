@@ -162,6 +162,43 @@ Rules:
 7. Rank selected events by `impact_magnitude` descending, with deterministic tie-breakers.
 8. Limit the review to a small number of moments, currently defaulting to top 5.
 
+## Coaching Relevance Policy
+
+The selection rules above are shared by user-facing review selection and
+user-facing weakness profile construction through `CoachingRelevancePolicy`.
+
+This policy is intentionally chess-agnostic. It does not inspect legal moves,
+call `FeatureStore`, call Stockfish, or create new chess facts. It only reads
+already verified evidence:
+
+```text
+VerifiedEvent.event.event_type
+EngineAssessment.event_impact_for_side
+EngineAssessment.impact_magnitude
+EventTypeMetadata.polarity
+```
+
+Raw aggregation remains raw:
+
+```text
+PatternAggregator -> raw/debug DetectedPattern objects
+WeaknessProfileBuilder -> profile-local relevance-filtered DetectedPattern objects
+```
+
+`GameAnalysisResult.detected_patterns` is not mutated or filtered. It remains
+useful for debugging and future evidence retrieval. `WeaknessProfile` contains
+only relevant positive or negative profile-local patterns.
+
+Profile-local pattern fields are recomputed from filtered supporting events:
+
+- `frequency`: number of relevant supporting events
+- `severity`: average `impact_magnitude` of relevant supporting events
+- `supporting_events`: the relevant supporting events in original order
+
+Neutral or unknown event types are excluded from user-facing strengths,
+weaknesses, and recurring themes. They remain available in raw detected
+patterns if the raw aggregator produced them.
+
 ## Current Grouping Behavior
 
 User-facing grouping is currently disabled.
@@ -181,6 +218,20 @@ Move 16: Multiple fork-related tactical issues
 ```
 
 The raw events remain available separately in `GameAnalysisResult.verified_events`.
+
+## Known Limitations
+
+Positive execution events such as `fork_created` may have low immediate engine
+impact because the evaluation often changed when the opponent allowed the
+tactic, not when the player executed it. Task 26E does not artificially boost
+those events. User-facing strengths may underrepresent low-impact execution
+events until a later tactical sequence or narrative-linking task.
+
+Mate scores are not yet represented as first-class impact values. If engine
+verification cannot convert a mate score into `event_impact_for_side` and
+`impact_magnitude`, the relevance policy filters that event out for now. This
+must not be interpreted as the event being unimportant; mate-aware scoring is a
+future engine assessment task.
 
 ## Future Grouping Design
 

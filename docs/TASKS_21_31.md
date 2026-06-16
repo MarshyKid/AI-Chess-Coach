@@ -14,7 +14,7 @@ The LLM must not do chess correctness. Chess correctness comes from deterministi
 
 ## Current Project State
 
-Tasks 1-26D are complete and accepted.
+Tasks 1-26E are complete and accepted.
 
 The current backend can:
 
@@ -25,7 +25,7 @@ The current backend can:
 - verify events with Stockfish through the engine layer
 - compute candidate-aware event impact for missed and allowed events
 - aggregate patterns
-- build a weakness profile
+- build a relevance-filtered user-facing weakness profile
 - select coaching moments
 - print a backend-only CLI review
 
@@ -259,13 +259,75 @@ Rules:
 
 ---
 
+## Task 26E — Shared Coaching-Relevance Filtering
+
+Status: complete and accepted after implementation
+
+Dependencies:
+
+- Task 26D
+
+Goal:
+
+Use one shared relevance policy for coaching moment selection and user-facing
+weakness profile construction.
+
+Problem fixed:
+
+Raw pattern aggregation can contain geometrical or debug events that are not
+engine-relevant, have missing impact, are below the coaching threshold, or do
+not match event polarity. Those raw events should remain available, but they
+should not make the user-facing profile claim a recurring weakness or strength.
+
+Important outcome:
+
+`GameAnalysisResult.detected_patterns` remains raw/debug output.
+
+`WeaknessProfile` is built from profile-local `DetectedPattern` objects whose
+supporting events pass `CoachingRelevancePolicy`.
+
+Shared relevance rules:
+
+- skip neutral or unknown event types
+- skip missing `event_impact_for_side`
+- skip missing `impact_magnitude`
+- skip events below the configured impact threshold
+- positive events require `event_impact_for_side > 0`
+- negative events require `event_impact_for_side < 0`
+
+Profile-local pattern recomputation:
+
+- `frequency` is the count of filtered supporting events
+- `severity` is the average `impact_magnitude`
+- `supporting_events` preserves filtered supporting events in original order
+
+Known limitations:
+
+- Positive execution events like `fork_created` can still be underrepresented
+  when their immediate engine impact is low. Tactical sequence and narrative
+  linking are deferred.
+- Mate scores that produce missing impact are still filtered out. Mate-aware
+  engine assessment is deferred and missing impact must not be treated as proof
+  that an event is unimportant.
+
+Rules:
+
+- Do not mutate raw detected patterns.
+- Do not change detector semantics or event type names.
+- Do not change engine verification.
+- Do not add mate-aware scoring in this task.
+- Do not add tactical sequence linking in this task.
+- Do not add LLM calls, frontend, API, database, auth, deployment, or new detectors.
+
+---
+
 ## Task 27 — LLM Client And Prompt Builder
 
 Status: next planned task
 
 Dependencies:
 
-- Tasks 21-26D
+- Tasks 21-26E
 
 Goal:
 

@@ -10,6 +10,7 @@ from ai_chess_coach.models import (
     VerifiedEvent,
     get_event_type_metadata,
 )
+from ai_chess_coach.relevance import CoachingRelevancePolicy
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,7 @@ class CoachingMomentSelector:
         *,
         min_impact_centipawns: int = 80,
         max_moments: int = 5,
+        relevance_policy: CoachingRelevancePolicy | None = None,
     ) -> None:
         if min_impact_centipawns < 0:
             raise ValueError("min_impact_centipawns must be non-negative.")
@@ -38,6 +40,9 @@ class CoachingMomentSelector:
 
         self.min_impact_centipawns = min_impact_centipawns
         self.max_moments = max_moments
+        self._relevance_policy = relevance_policy or CoachingRelevancePolicy(
+            min_impact_centipawns=min_impact_centipawns
+        )
 
     def select(self, events: Iterable[VerifiedEvent]) -> tuple[VerifiedEventGroup, ...]:
         """Return selected verified event groups in deterministic priority order."""
@@ -48,27 +53,12 @@ class CoachingMomentSelector:
             if not isinstance(event, VerifiedEvent):
                 raise TypeError("CoachingMomentSelector.select() accepts only VerifiedEvent objects.")
 
+            if not self._relevance_policy.is_relevant(event):
+                continue
+
             event_type_metadata = get_event_type_metadata(event.event.event_type)
-            if event_type_metadata.polarity == "neutral":
-                continue
-
             impact_magnitude = event.engine_assessment.impact_magnitude
-            if impact_magnitude is None or impact_magnitude < self.min_impact_centipawns:
-                continue
-
-            event_impact_for_side = event.engine_assessment.event_impact_for_side
-            if event_impact_for_side is None:
-                continue
-            if (
-                event_type_metadata.polarity == "positive"
-                and event_impact_for_side <= 0
-            ):
-                continue
-            if (
-                event_type_metadata.polarity == "negative"
-                and event_impact_for_side >= 0
-            ):
-                continue
+            assert impact_magnitude is not None
 
             selected_groups.append(
                 VerifiedEventGroup(
