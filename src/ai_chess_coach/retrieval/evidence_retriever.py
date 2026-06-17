@@ -99,15 +99,27 @@ def _validated_patterns(patterns: Iterable[DetectedPattern]) -> list[DetectedPat
     return detected_patterns
 
 
-def _event_sort_key(event: VerifiedEvent) -> tuple[float, str, str]:
-    eval_delta = event.engine_assessment.eval_delta
-    score = abs(eval_delta) if eval_delta is not None else event.event.severity
+def _event_sort_key(event: VerifiedEvent) -> tuple[int, float, int, str, str, tuple[int, ...]]:
+    score_priority, score = _event_retrieval_score(event)
 
     return (
+        score_priority,
         -float(score),
+        event.event.metadata.ply,
         event.event.event_type,
         event.event.move.uci(),
+        event.event.squares,
     )
+
+
+def _event_retrieval_score(event: VerifiedEvent) -> tuple[int, float]:
+    assessment = event.engine_assessment
+    if assessment.event_score_kind == "mate" and assessment.impact_rank is not None:
+        return 0, float(assessment.impact_rank)
+    if assessment.event_score_kind != "mate" and assessment.impact_magnitude is not None:
+        return 1, float(assessment.impact_magnitude)
+
+    return 2, float(event.event.severity)
 
 
 def _pattern_sort_key(pattern: DetectedPattern) -> tuple[float, int, str]:

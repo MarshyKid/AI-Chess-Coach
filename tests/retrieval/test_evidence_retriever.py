@@ -19,6 +19,11 @@ def make_verified_event(
     *,
     move_uci: str = "e2e4",
     eval_delta: int | None = None,
+    impact_magnitude: int | None = None,
+    event_score_kind: str = "centipawn",
+    impact_rank: int | None = None,
+    ply: int = 1,
+    squares: tuple[chess.Square, ...] = (chess.E4,),
     event_severity: float = 1.0,
 ) -> VerifiedEvent:
     return VerifiedEvent(
@@ -27,13 +32,13 @@ def make_verified_event(
             side=chess.WHITE,
             move=chess.Move.from_uci(move_uci),
             position=chess.Board(),
-            squares=(chess.E4,),
+            squares=squares,
             metadata=EventMetadata(
                 before_fen=chess.STARTING_FEN,
                 after_fen=chess.Board().fen(),
                 move_uci=move_uci,
                 move_san=move_uci,
-                ply=1,
+                ply=ply,
             ),
             evidence={},
             severity=event_severity,
@@ -45,6 +50,9 @@ def make_verified_event(
             best_move=None,
             principal_variation=(),
             depth=None,
+            impact_magnitude=impact_magnitude,
+            event_score_kind=event_score_kind,  # type: ignore[arg-type]
+            impact_rank=impact_rank,
         ),
     )
 
@@ -82,33 +90,165 @@ class EvidenceRetrieverTest(unittest.TestCase):
 
         self.assertEqual(events, (second,))
 
-    def test_ranks_events_by_absolute_eval_delta_when_available(self) -> None:
-        low = make_verified_event("fork_missed", eval_delta=25)
-        high = make_verified_event("hanging_piece_lost", eval_delta=-100)
+    def test_ranks_centipawn_events_by_impact_magnitude(self) -> None:
+        low = make_verified_event("fork_missed", impact_magnitude=25)
+        high = make_verified_event("hanging_piece_lost", impact_magnitude=100)
 
         events = EvidenceRetriever().retrieve_events((low, high))
 
         self.assertEqual(events, (high, low))
 
-    def test_events_fall_back_to_event_severity_when_eval_delta_is_none(self) -> None:
-        low = make_verified_event("fork_missed", eval_delta=None, event_severity=0.25)
-        high = make_verified_event("fork_allowed", eval_delta=None, event_severity=1.5)
+    def test_candidate_aware_impact_magnitude_outranks_raw_eval_delta(self) -> None:
+        canonical_high = make_verified_event(
+            "fork_missed",
+            eval_delta=10,
+            impact_magnitude=300,
+        )
+        raw_high = make_verified_event(
+            "hanging_piece_created",
+            move_uci="g1f3",
+            eval_delta=900,
+            impact_magnitude=50,
+        )
+
+        events = EvidenceRetriever().retrieve_events((raw_high, canonical_high))
+
+        self.assertEqual(events, (canonical_high, raw_high))
+
+    def test_raw_eval_delta_without_canonical_impact_falls_back_to_severity(self) -> None:
+        canonical = make_verified_event(
+            "fork_missed",
+            eval_delta=10,
+            impact_magnitude=80,
+        )
+        raw_large = make_verified_event(
+            "hanging_piece_created",
+            move_uci="g1f3",
+            eval_delta=10_000,
+            impact_magnitude=None,
+            event_severity=0.5,
+        )
+
+        events = EvidenceRetriever().retrieve_events((raw_large, canonical))
+
+        self.assertEqual(events, (canonical, raw_large))
+
+    def test_mate_events_with_impact_rank_sort_before_centipawn_events(self) -> None:
+        mate = make_verified_event(
+            "fork_allowed",
+            event_score_kind="mate",
+            impact_rank=100,
+            event_severity=0.1,
+        )
+        centipawn = make_verified_event(
+            "hanging_piece_lost",
+            move_uci="g1f3",
+            impact_magnitude=10_000,
+        )
+
+        events = EvidenceRetriever().retrieve_events((centipawn, mate))
+
+        self.assertEqual(events, (mate, centipawn))
+
+    def test_mate_events_use_impact_rank_not_detector_severity(self) -> None:
+        low_rank_high_severity = make_verified_event(
+            "fork_allowed",
+            event_score_kind="mate",
+            impact_rank=100,
+            event_severity=10_000.0,
+        )
+        high_rank_low_severity = make_verified_event(
+            "fork_missed",
+            move_uci="g1f3",
+            event_score_kind="mate",
+            impact_rank=300,
+            event_severity=0.1,
+        )
+
+        events = EvidenceRetriever().retrieve_events(
+            (low_rank_high_severity, high_rank_low_severity)
+        )
+
+        self.assertEqual(events, (high_rank_low_severity, low_rank_high_severity))
+
+    def test_mate_event_missing_impact_rank_falls_back_to_event_severity(self) -> None:
+        high_severity = make_verified_event(
+            "fork_allowed",
+            event_score_kind="mate",
+            impact_rank=None,
+            event_severity=1.5,
+        )
+        low_severity = make_verified_event(
+            "fork_missed",
+            move_uci="g1f3",
+            event_score_kind="mate",
+            impact_rank=None,
+            event_severity=0.25,
+        )
+
+        events = EvidenceRetriever().retrieve_events((low_severity, high_severity))
+
+        self.assertEqual(events, (high_severity, low_severity))
+
+    def test_events_fall_back_to_event_severity_when_canonical_impact_is_unavailable(
+        self,
+    ) -> None:
+        low = make_verified_event("fork_missed", event_severity=0.25)
+        high = make_verified_event("fork_allowed", move_uci="g1f3", event_severity=1.5)
 
         events = EvidenceRetriever().retrieve_events((low, high))
 
         self.assertEqual(events, (high, low))
 
-    def test_event_ranking_ties_use_event_type_then_move_uci(self) -> None:
-        second = make_verified_event("fork_missed", move_uci="g1f3", eval_delta=50)
-        first = make_verified_event("fork_allowed", move_uci="g1h3", eval_delta=-50)
+    def test_event_ranking_ties_use_ply_event_type_move_uci_and_squares(self) -> None:
+        later_ply = make_verified_event(
+            "fork_allowed",
+            move_uci="g1f3",
+            impact_magnitude=50,
+            ply=2,
+            squares=(chess.F3,),
+        )
+        earlier_type = make_verified_event(
+            "fork_allowed",
+            move_uci="g1h3",
+            impact_magnitude=50,
+            ply=1,
+            squares=(chess.H3,),
+        )
+        later_type = make_verified_event(
+            "fork_missed",
+            move_uci="a2a3",
+            impact_magnitude=50,
+            ply=1,
+            squares=(chess.A3,),
+        )
+        earlier_move = make_verified_event(
+            "fork_allowed",
+            move_uci="b1c3",
+            impact_magnitude=50,
+            ply=1,
+            squares=(chess.C3,),
+        )
+        earlier_square = make_verified_event(
+            "fork_allowed",
+            move_uci="b1c3",
+            impact_magnitude=50,
+            ply=1,
+            squares=(chess.A1,),
+        )
 
-        events = EvidenceRetriever().retrieve_events((second, first))
+        events = EvidenceRetriever().retrieve_events(
+            (later_ply, later_type, earlier_type, earlier_move, earlier_square)
+        )
 
-        self.assertEqual(events, (first, second))
+        self.assertEqual(
+            events,
+            (earlier_square, earlier_move, earlier_type, later_type, later_ply),
+        )
 
     def test_applies_event_limit(self) -> None:
-        high = make_verified_event("hanging_piece_lost", eval_delta=100)
-        low = make_verified_event("fork_missed", eval_delta=10)
+        high = make_verified_event("hanging_piece_lost", impact_magnitude=100)
+        low = make_verified_event("fork_missed", impact_magnitude=10)
 
         events = EvidenceRetriever().retrieve_events((low, high), limit=1)
 
@@ -296,10 +436,14 @@ class EvidenceRetrieverTest(unittest.TestCase):
 
         self.assertNotIn("stockfish", source)
         self.assertNotIn("ai_chess_coach.engine", source)
+        self.assertNotIn("ai_chess_coach.detectors", source)
+        self.assertNotIn("featurestore", source)
         self.assertNotIn("openai", source)
         self.assertNotIn("llm", source)
         self.assertNotIn("legal_moves", source)
         self.assertNotIn("attackers", source)
+        self.assertNotIn("requests", source)
+        self.assertNotIn("httpx", source)
 
     def test_evidence_retriever_is_exported_from_retrieval_package(self) -> None:
         import ai_chess_coach.retrieval as retrieval

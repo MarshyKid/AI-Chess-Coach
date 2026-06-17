@@ -246,6 +246,27 @@ Neutral or unknown event types are excluded from user-facing strengths,
 weaknesses, and recurring themes. They remain available in raw detected
 patterns if the raw aggregator produced them.
 
+## Evidence Retrieval Ranking
+
+Retrieval is broader than coaching selection. `EvidenceRetriever.retrieve_events()`
+does not filter by coaching relevance, event polarity, or thresholds. It keeps
+raw verified events available for debugging, prompts, and future tools.
+
+Event retrieval is ordered by canonical verified evidence strength:
+
+1. Mate-aware events with `impact_rank`, ranked before centipawn-impact events.
+2. Centipawn and candidate-aware events with `impact_magnitude`.
+3. Detector `severity` only when no canonical verified impact is available.
+
+Retrieval must not sort raw events by `eval_delta`. `eval_delta` is raw
+White-perspective actual-move evidence, so it is not the right importance signal
+for missed-candidate, allowed-response, or mate-aware events.
+
+This ordering is not relevance filtering. Low-impact, polarity-mismatched,
+neutral, and unknown events may still be returned by retrieval if they match the
+caller filters. User-facing review selection remains the responsibility of
+`CoachingRelevancePolicy` and `CoachingMomentSelector`.
+
 ## Execution Strength Evidence
 
 Strengths and weaknesses are not perfectly symmetric. A weakness usually means

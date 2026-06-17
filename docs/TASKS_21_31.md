@@ -14,7 +14,7 @@ The LLM must not do chess correctness. Chess correctness comes from deterministi
 
 ## Current Project State
 
-Tasks 1-26E are complete and accepted.
+Tasks 1-26I are complete and accepted.
 
 The current backend can:
 
@@ -27,6 +27,7 @@ The current backend can:
 - aggregate patterns
 - build a relevance-filtered user-facing weakness profile
 - select coaching moments
+- retrieve verified events using canonical mate/candidate-aware impact ranking
 - print a backend-only CLI review
 
 Implemented detectors:
@@ -457,13 +458,58 @@ Rules:
 
 ---
 
+## Task 26I — Mate/Candidate-Aware Evidence Retrieval Ranking
+
+Status: complete and accepted after implementation
+
+Dependencies:
+
+- Task 26D
+- Task 26G
+
+Goal:
+
+Rank raw retrieved `VerifiedEvent` objects by canonical verified impact instead
+of raw White-perspective actual-move `eval_delta`.
+
+Important outcome:
+
+`EvidenceRetriever.retrieve_events()` remains broad and non-filtering. It does
+not apply `CoachingRelevancePolicy`, classify strengths or weaknesses, or hide
+raw evidence. It only orders matching verified events deterministically.
+
+Event retrieval priority:
+
+1. Mate-aware events with `impact_rank`.
+2. Centipawn and candidate-aware events with `impact_magnitude`.
+3. Detector `severity` only when canonical verified impact is unavailable.
+
+Tie-breakers:
+
+- metadata ply ascending
+- event type ascending
+- move UCI ascending
+- squares tuple ascending
+
+Rules:
+
+- Do not use raw `eval_delta` for retrieval ordering.
+- Do not change pattern or profile retrieval behavior.
+- Do not import or call relevance policy from retrieval.
+- Do not change detector semantics, event type names, engine verification,
+  mate scoring, selector behavior, or profile-builder behavior.
+- Do not add LLM calls, frontend, API, database, auth, deployment, or new
+  detectors.
+
+---
+
 ## Task 27 — LLM Client And Prompt Builder
 
 Status: next planned task
 
 Dependencies:
 
-- Tasks 21-26H
+- Tasks 21-26I
 
 Goal:
 

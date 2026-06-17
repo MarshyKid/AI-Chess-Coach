@@ -509,6 +509,11 @@ Rules:
 - Verification must remain separate from detection.
 - `VerifiedEvent` is allowed to be used by profiling, retrieval, and coaching layers.
 - `VerifiedEvent` should not itself generate coaching language.
+- Retrieval should order verified events by canonical verified impact:
+  mate-aware `impact_rank` first, then centipawn/candidate-aware
+  `impact_magnitude`, then detector `severity` as a fallback.
+- Retrieval should not use raw `eval_delta` for event ordering because it is
+  White-perspective actual-move evidence, not event-specific impact.
 
 ---
 
