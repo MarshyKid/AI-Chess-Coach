@@ -5,19 +5,32 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from ai_chess_coach.models import DetectedPattern, WeaknessProfile, get_event_type_metadata
-from ai_chess_coach.relevance import CoachingRelevancePolicy
+from ai_chess_coach.relevance import CoachingRelevancePolicy, ExecutionStrengthPolicy
 
 
 class WeaknessProfileBuilder:
     """Builds structured profiles from detected patterns."""
 
-    def __init__(self, relevance_policy: CoachingRelevancePolicy | None = None) -> None:
+    def __init__(
+        self,
+        relevance_policy: CoachingRelevancePolicy | None = None,
+        execution_strength_policy: ExecutionStrengthPolicy | None = None,
+    ) -> None:
         self._relevance_policy = relevance_policy or CoachingRelevancePolicy()
+        self._execution_strength_policy = (
+            execution_strength_policy or ExecutionStrengthPolicy()
+        )
 
     def build(self, patterns: Iterable[DetectedPattern]) -> WeaknessProfile:
+        validated_patterns = _validated_patterns(patterns)
         profile_patterns = _profile_patterns(
-            _validated_patterns(patterns),
+            validated_patterns,
             self._relevance_policy,
+        )
+        execution_strength_patterns = _execution_strength_patterns(
+            validated_patterns,
+            self._relevance_policy,
+            self._execution_strength_policy,
         )
         sorted_patterns = _sorted_patterns(profile_patterns)
 
@@ -33,6 +46,7 @@ class WeaknessProfileBuilder:
                 if get_event_type_metadata(pattern.pattern_type).polarity == "negative"
             ),
             recurring_themes=tuple(sorted_patterns),
+            execution_strengths=tuple(_sorted_patterns(execution_strength_patterns)),
         )
 
 
@@ -61,6 +75,37 @@ def _profile_patterns(
         )
 
     return profile_patterns
+
+
+def _execution_strength_patterns(
+    patterns: list[DetectedPattern],
+    relevance_policy: CoachingRelevancePolicy,
+    execution_strength_policy: ExecutionStrengthPolicy,
+) -> list[DetectedPattern]:
+    execution_strength_patterns: list[DetectedPattern] = []
+
+    for pattern in patterns:
+        supporting_events = tuple(
+            event
+            for event in pattern.supporting_events
+            if (
+                execution_strength_policy.is_execution_strength(event)
+                and not relevance_policy.is_relevant(event)
+            )
+        )
+        if not supporting_events:
+            continue
+
+        execution_strength_patterns.append(
+            DetectedPattern(
+                pattern_type=pattern.pattern_type,
+                frequency=len(supporting_events),
+                severity=float(len(supporting_events)),
+                supporting_events=supporting_events,
+            )
+        )
+
+    return execution_strength_patterns
 
 
 def _average_profile_impact(events) -> float:

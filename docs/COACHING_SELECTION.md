@@ -28,8 +28,8 @@ Event types need central metadata that describes their downstream coaching meani
 Examples:
 
 ```text
-fork_created              -> positive, tactics, actual_move
-knight_outpost_created    -> positive, positional, actual_move
+fork_created              -> positive, tactics, actual_move, execution_strength
+knight_outpost_created    -> positive, positional, actual_move, execution_strength
 fork_missed               -> negative, tactics, missed_candidate
 fork_allowed              -> negative, tactics, allowed_response
 hanging_piece_created     -> negative, piece_safety, actual_move
@@ -233,7 +233,8 @@ WeaknessProfileBuilder -> profile-local relevance-filtered DetectedPattern objec
 
 `GameAnalysisResult.detected_patterns` is not mutated or filtered. It remains
 useful for debugging and future evidence retrieval. `WeaknessProfile` contains
-only relevant positive or negative profile-local patterns.
+relevant positive or negative profile-local patterns plus separate execution
+strength patterns.
 
 Profile-local pattern fields are recomputed from filtered supporting events:
 
@@ -244,6 +245,38 @@ Profile-local pattern fields are recomputed from filtered supporting events:
 Neutral or unknown event types are excluded from user-facing strengths,
 weaknesses, and recurring themes. They remain available in raw detected
 patterns if the raw aggregator produced them.
+
+## Execution Strength Evidence
+
+Strengths and weaknesses are not perfectly symmetric. A weakness usually means
+the player made or missed something engine-important. A strength can also mean
+the player successfully executed a detected motif after the opportunity already
+existed, so the immediate engine swing may be small.
+
+`ExecutionStrengthPolicy` handles this second case. It is intentionally
+metadata-and-assessment-only. It does not inspect legal moves, call
+`FeatureStore`, call Stockfish, or create chess facts.
+
+Execution strength rules:
+
+1. Event type polarity must be positive.
+2. `EventTypeMetadata.is_execution_strength` must be true.
+3. The event must not be contradicted by engine evidence:
+   - centipawn events require `event_impact_for_side >= 0`
+   - mate events require `event_impact_rank_for_side >= 0`
+   - unavailable score kind is rejected
+4. No centipawn threshold is applied.
+5. Events that already pass `CoachingRelevancePolicy` remain in impact
+   `strengths` and are not duplicated into `execution_strengths`.
+
+Current execution-strength event types:
+
+- `fork_created`
+- `knight_outpost_created`
+
+`WeaknessProfile.execution_strengths` is structured evidence for successful
+execution, not proof of a large engine swing. Its pattern severity is an
+ordering score based on frequency, not centipawns or mate-rank impact.
 
 ## Current Grouping Behavior
 
@@ -269,9 +302,9 @@ The raw events remain available separately in `GameAnalysisResult.verified_event
 
 Positive execution events such as `fork_created` may have low immediate engine
 impact because the evaluation often changed when the opponent allowed the
-tactic, not when the player executed it. Task 26E does not artificially boost
-those events. User-facing strengths may underrepresent low-impact execution
-events until a later tactical sequence or narrative-linking task.
+tactic, not when the player executed it. Execution strengths surface these
+events without artificially boosting their engine impact. Full tactical sequence
+or narrative linking is still deferred.
 
 Mate scores are now represented as structured scores and internal rank values.
 Those rank values are not centipawns. Future prompt and UI work must describe

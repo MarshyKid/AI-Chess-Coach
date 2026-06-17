@@ -49,6 +49,7 @@ class EvidenceRetriever:
         profile: WeaknessProfile,
         *,
         include_strengths: bool = True,
+        include_execution_strengths: bool = True,
         include_weaknesses: bool = True,
         include_recurring_themes: bool = True,
         limit: int | None = None,
@@ -60,6 +61,8 @@ class EvidenceRetriever:
         patterns: list[DetectedPattern] = []
         if include_strengths:
             patterns.extend(profile.strengths)
+        if include_execution_strengths:
+            patterns.extend(profile.execution_strengths)
         if include_weaknesses:
             patterns.extend(profile.weaknesses)
         if include_recurring_themes:

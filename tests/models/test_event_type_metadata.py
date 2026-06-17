@@ -9,18 +9,43 @@ from ai_chess_coach.models import (
 )
 
 EXPECTED_METADATA = {
-    "hanging_piece_created": ("Hanging Piece Created", "piece_safety", "negative", "actual_move"),
-    "hanging_piece_ignored": ("Hanging Piece Ignored", "piece_safety", "negative", "actual_move"),
-    "hanging_piece_lost": ("Hanging Piece Lost", "piece_safety", "negative", "actual_move"),
-    "fork_created": ("Fork Created", "tactics", "positive", "actual_move"),
-    "fork_missed": ("Fork Missed", "tactics", "negative", "missed_candidate"),
-    "fork_allowed": ("Fork Allowed", "tactics", "negative", "allowed_response"),
-    "knight_outpost_created": ("Knight Outpost Created", "positional", "positive", "actual_move"),
+    "hanging_piece_created": (
+        "Hanging Piece Created",
+        "piece_safety",
+        "negative",
+        "actual_move",
+        False,
+    ),
+    "hanging_piece_ignored": (
+        "Hanging Piece Ignored",
+        "piece_safety",
+        "negative",
+        "actual_move",
+        False,
+    ),
+    "hanging_piece_lost": (
+        "Hanging Piece Lost",
+        "piece_safety",
+        "negative",
+        "actual_move",
+        False,
+    ),
+    "fork_created": ("Fork Created", "tactics", "positive", "actual_move", True),
+    "fork_missed": ("Fork Missed", "tactics", "negative", "missed_candidate", False),
+    "fork_allowed": ("Fork Allowed", "tactics", "negative", "allowed_response", False),
+    "knight_outpost_created": (
+        "Knight Outpost Created",
+        "positional",
+        "positive",
+        "actual_move",
+        True,
+    ),
     "knight_outpost_missed": (
         "Knight Outpost Missed",
         "positional",
         "negative",
         "missed_candidate",
+        False,
     ),
 }
 
@@ -33,6 +58,7 @@ class EventTypeMetadataTest(unittest.TestCase):
             category="tactics",
             polarity="positive",
             verification_kind="actual_move",
+            is_execution_strength=True,
         )
 
         self.assertEqual(metadata.event_type, "fork_created")
@@ -40,6 +66,7 @@ class EventTypeMetadataTest(unittest.TestCase):
         self.assertEqual(metadata.category, "tactics")
         self.assertEqual(metadata.polarity, "positive")
         self.assertEqual(metadata.verification_kind, "actual_move")
+        self.assertTrue(metadata.is_execution_strength)
 
     def test_model_is_frozen(self) -> None:
         metadata = EventTypeMetadata(
@@ -74,6 +101,7 @@ class EventTypeMetadataTest(unittest.TestCase):
             category,
             polarity,
             verification_kind,
+            is_execution_strength,
         ) in EXPECTED_METADATA.items():
             with self.subTest(event_type=event_type):
                 metadata = get_event_type_metadata(event_type)
@@ -83,6 +111,7 @@ class EventTypeMetadataTest(unittest.TestCase):
                 self.assertEqual(metadata.category, category)
                 self.assertEqual(metadata.polarity, polarity)
                 self.assertEqual(metadata.verification_kind, verification_kind)
+                self.assertEqual(metadata.is_execution_strength, is_execution_strength)
 
     def test_registered_metadata_is_returned_sorted_by_event_type(self) -> None:
         event_types = [
@@ -99,6 +128,7 @@ class EventTypeMetadataTest(unittest.TestCase):
         self.assertEqual(metadata.category, "unknown")
         self.assertEqual(metadata.polarity, "neutral")
         self.assertEqual(metadata.verification_kind, "actual_move")
+        self.assertFalse(metadata.is_execution_strength)
 
     def test_verification_kind_type_is_exported(self) -> None:
         self.assertIsNotNone(VerificationKind)

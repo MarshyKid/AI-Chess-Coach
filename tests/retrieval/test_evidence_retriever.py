@@ -174,24 +174,28 @@ class EvidenceRetrieverTest(unittest.TestCase):
 
     def test_retrieves_profile_data_from_all_sections(self) -> None:
         strength = make_pattern("fork_created", severity=3.0)
+        execution_strength = make_pattern("knight_outpost_created", severity=2.5)
         weakness = make_pattern("fork_missed", severity=2.0)
         theme = make_pattern("neutral_theme", severity=1.0)
         profile = WeaknessProfile(
             strengths=(strength,),
+            execution_strengths=(execution_strength,),
             weaknesses=(weakness,),
             recurring_themes=(theme,),
         )
 
         patterns = EvidenceRetriever().retrieve_profile(profile)
 
-        self.assertEqual(patterns, (strength, weakness, theme))
+        self.assertEqual(patterns, (strength, execution_strength, weakness, theme))
 
     def test_profile_retrieval_respects_include_flags(self) -> None:
         strength = make_pattern("fork_created", severity=3.0)
+        execution_strength = make_pattern("knight_outpost_created", severity=2.5)
         weakness = make_pattern("fork_missed", severity=2.0)
         theme = make_pattern("neutral_theme", severity=1.0)
         profile = WeaknessProfile(
             strengths=(strength,),
+            execution_strengths=(execution_strength,),
             weaknesses=(weakness,),
             recurring_themes=(theme,),
         )
@@ -199,10 +203,31 @@ class EvidenceRetrieverTest(unittest.TestCase):
         patterns = EvidenceRetriever().retrieve_profile(
             profile,
             include_strengths=False,
+            include_execution_strengths=False,
             include_recurring_themes=False,
         )
 
         self.assertEqual(patterns, (weakness,))
+
+    def test_profile_retrieval_can_include_only_execution_strengths(self) -> None:
+        strength = make_pattern("fork_created", severity=3.0)
+        execution_strength = make_pattern("knight_outpost_created", severity=2.5)
+        weakness = make_pattern("fork_missed", severity=2.0)
+        profile = WeaknessProfile(
+            strengths=(strength,),
+            execution_strengths=(execution_strength,),
+            weaknesses=(weakness,),
+            recurring_themes=(),
+        )
+
+        patterns = EvidenceRetriever().retrieve_profile(
+            profile,
+            include_strengths=False,
+            include_weaknesses=False,
+            include_recurring_themes=False,
+        )
+
+        self.assertEqual(patterns, (execution_strength,))
 
     def test_profile_retrieval_deduplicates_pattern_objects(self) -> None:
         shared = make_pattern("fork_missed", severity=2.0)

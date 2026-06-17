@@ -14,3 +14,4 @@ class WeaknessProfile:
     strengths: tuple[DetectedPattern, ...]
     weaknesses: tuple[DetectedPattern, ...]
     recurring_themes: tuple[DetectedPattern, ...]
+    execution_strengths: tuple[DetectedPattern, ...] = ()

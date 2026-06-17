@@ -353,6 +353,7 @@ Fields:
 - `category`
 - `polarity`
 - `verification_kind`
+- `is_execution_strength`
 
 `verification_kind` describes how the engine layer should verify the event:
 
@@ -362,6 +363,13 @@ Fields:
 
 Unknown event types remain neutral and default to `actual_move` verification
 metadata for deterministic backward compatibility.
+
+`is_execution_strength` marks positive event types that can represent successful
+execution evidence even when immediate engine impact is small. Current execution
+strength event types are:
+
+- `fork_created`
+- `knight_outpost_created`
 
 ---
 
@@ -561,6 +569,7 @@ src/ai_chess_coach/models/weakness_profile.py
 Fields:
 
 - `strengths`
+- `execution_strengths`
 - `weaknesses`
 - `recurring_themes`
 
@@ -571,6 +580,11 @@ Rules:
   supporting events passed `CoachingRelevancePolicy`.
 - Profile-local pattern severity is the average centipawn `impact_magnitude` for
   centipawn events or average mate-aware `impact_rank` for mate-scored events.
+- `execution_strengths` contains profile-local `DetectedPattern` objects for
+  non-contradicted positive execution evidence that did not meet the impact
+  relevance threshold.
+- Execution-strength pattern severity is an ordering score based on frequency,
+  not centipawn or mate-rank impact.
 - Neutral or unknown event types are excluded from user-facing profile fields.
 - Raw `GameAnalysisResult.detected_patterns` remains the debugging source for
   unfiltered patterns.

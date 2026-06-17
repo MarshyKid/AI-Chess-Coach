@@ -18,6 +18,7 @@ class EventTypeMetadata:
     category: str
     polarity: EventPolarity
     verification_kind: VerificationKind = "actual_move"
+    is_execution_strength: bool = False
 
 
 _EVENT_TYPE_METADATA = {
@@ -46,6 +47,7 @@ _EVENT_TYPE_METADATA = {
             display_name="Fork Created",
             category="tactics",
             polarity="positive",
+            is_execution_strength=True,
         ),
         EventTypeMetadata(
             event_type="fork_missed",
@@ -66,6 +68,7 @@ _EVENT_TYPE_METADATA = {
             display_name="Knight Outpost Created",
             category="positional",
             polarity="positive",
+            is_execution_strength=True,
         ),
         EventTypeMetadata(
             event_type="knight_outpost_missed",

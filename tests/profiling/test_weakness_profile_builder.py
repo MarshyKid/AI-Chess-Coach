@@ -223,6 +223,7 @@ class WeaknessProfileBuilderTest(unittest.TestCase):
         self.assertEqual(profile.recurring_themes, ())
         self.assertEqual(profile.strengths, ())
         self.assertEqual(profile.weaknesses, ())
+        self.assertEqual(profile.execution_strengths, ())
 
     def test_low_missing_and_polarity_mismatched_events_are_excluded(self) -> None:
         relevant = make_verified_event(
@@ -269,6 +270,114 @@ class WeaknessProfileBuilderTest(unittest.TestCase):
             pattern.supporting_events,
             (relevant, low_impact, missing_impact, polarity_mismatch),
         )
+
+    def test_low_impact_positive_execution_events_are_execution_strengths(self) -> None:
+        fork = make_verified_event(
+            "fork_created",
+            event_impact_for_side=1,
+            impact_magnitude=1,
+        )
+        outpost = make_verified_event(
+            "knight_outpost_created",
+            event_impact_for_side=0,
+            impact_magnitude=0,
+            move_uci="g1f3",
+        )
+        patterns = (
+            make_pattern("fork_created", supporting_events=(fork,)),
+            make_pattern("knight_outpost_created", supporting_events=(outpost,)),
+        )
+
+        profile = WeaknessProfileBuilder().build(patterns)
+
+        self.assertEqual(profile.strengths, ())
+        self.assertEqual(profile.weaknesses, ())
+        self.assertEqual(profile.recurring_themes, ())
+        self.assertEqual(
+            {pattern.pattern_type for pattern in profile.execution_strengths},
+            {"fork_created", "knight_outpost_created"},
+        )
+        self.assertEqual(
+            {
+                pattern.pattern_type: pattern.supporting_events
+                for pattern in profile.execution_strengths
+            },
+            {
+                "fork_created": (fork,),
+                "knight_outpost_created": (outpost,),
+            },
+        )
+
+    def test_low_impact_negative_events_do_not_become_weaknesses(self) -> None:
+        event = make_verified_event(
+            "hanging_piece_created",
+            event_impact_for_side=-1,
+            impact_magnitude=1,
+        )
+
+        profile = WeaknessProfileBuilder().build(
+            (make_pattern("hanging_piece_created", supporting_events=(event,)),)
+        )
+
+        self.assertEqual(profile.weaknesses, ())
+        self.assertEqual(profile.execution_strengths, ())
+
+    def test_high_impact_positive_events_are_not_duplicated_as_execution_strengths(
+        self,
+    ) -> None:
+        event = make_verified_event(
+            "fork_created",
+            event_impact_for_side=100,
+            impact_magnitude=100,
+        )
+
+        profile = WeaknessProfileBuilder().build(
+            (make_pattern("fork_created", supporting_events=(event,)),)
+        )
+
+        self.assertEqual(
+            tuple(pattern.pattern_type for pattern in profile.strengths),
+            ("fork_created",),
+        )
+        self.assertEqual(profile.execution_strengths, ())
+
+    def test_execution_strength_patterns_recompute_frequency_severity_and_events(
+        self,
+    ) -> None:
+        first = make_verified_event(
+            "fork_created",
+            event_impact_for_side=1,
+            impact_magnitude=1,
+        )
+        second = make_verified_event(
+            "fork_created",
+            event_impact_for_side=0,
+            impact_magnitude=0,
+            move_uci="g1f3",
+        )
+        contradicted = make_verified_event(
+            "fork_created",
+            event_impact_for_side=-1,
+            impact_magnitude=1,
+            move_uci="b1c3",
+        )
+        pattern = make_pattern(
+            "fork_created",
+            frequency=3,
+            severity=999.0,
+            supporting_events=(first, second, contradicted),
+        )
+
+        profile = WeaknessProfileBuilder().build((pattern,))
+
+        profile_pattern = profile.execution_strengths[0]
+        self.assertIsNot(profile_pattern, pattern)
+        self.assertEqual(profile_pattern.frequency, 2)
+        self.assertEqual(profile_pattern.severity, 2.0)
+        self.assertEqual(profile_pattern.supporting_events, (first, second))
+        self.assertEqual(pattern.frequency, 3)
+        self.assertEqual(pattern.severity, 999.0)
+        self.assertEqual(pattern.supporting_events, (first, second, contradicted))
 
     def test_profile_pattern_severity_is_average_filtered_impact_magnitude(self) -> None:
         first = make_verified_event(
@@ -330,6 +439,7 @@ class WeaknessProfileBuilderTest(unittest.TestCase):
         self.assertEqual(profile.strengths, ())
         self.assertEqual(profile.weaknesses, ())
         self.assertEqual(profile.recurring_themes, ())
+        self.assertEqual(profile.execution_strengths, ())
 
     def test_raw_pgn_strings_raise_type_error(self) -> None:
         with self.assertRaises(TypeError):

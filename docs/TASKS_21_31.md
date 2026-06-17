@@ -303,8 +303,9 @@ Profile-local pattern recomputation:
 Known limitations:
 
 - Positive execution events like `fork_created` can still be underrepresented
-  when their immediate engine impact is low. Tactical sequence and narrative
-  linking are deferred.
+  when their immediate engine impact is low. Task 26H adds separate execution
+  strength evidence without changing impact relevance. Full tactical sequence
+  and narrative linking are deferred.
 
 Rules:
 
@@ -392,13 +393,77 @@ Rules:
 
 ---
 
+## Task 26H — Positive Execution And Strength Profile Semantics
+
+Status: complete and accepted after implementation
+
+Dependencies:
+
+- Task 26E
+- Task 26G
+
+Goal:
+
+Surface positive execution evidence separately from high-impact strengths so
+the profile can show successful motif execution without pretending it caused a
+large engine swing.
+
+Problem fixed:
+
+Low-impact `fork_created` and `knight_outpost_created` events could disappear
+from user-facing strengths because the same impact threshold was used for
+mistakes and strengths.
+
+Important outcome:
+
+`EventTypeMetadata` includes:
+
+- `is_execution_strength`
+
+Current execution-strength event types:
+
+- `fork_created`
+- `knight_outpost_created`
+
+`WeaknessProfile` includes:
+
+- `execution_strengths`
+
+`ExecutionStrengthPolicy` accepts positive execution events when engine evidence
+does not contradict them:
+
+- centipawn events require `event_impact_for_side >= 0`
+- mate events require `event_impact_rank_for_side >= 0`
+- unavailable score kind is rejected
+
+Profile behavior:
+
+- `strengths` remains impact/high-impact strengths.
+- `execution_strengths` contains low-impact positive execution patterns.
+- `weaknesses` remains impact-filtered.
+- `recurring_themes` remains the impact-filtered union.
+- Raw `GameAnalysisResult.detected_patterns` remains raw/debug output.
+
+Execution-strength pattern severity is `float(frequency)`. It is an ordering
+score only, not centipawns or mate-rank impact.
+
+Rules:
+
+- Do not artificially boost engine impact or mate rank.
+- Do not change detector semantics or event type names.
+- Do not change engine verification.
+- Do not implement tactical sequence linking.
+- Do not add LLM calls, frontend, API, database, auth, deployment, or new detectors.
+
+---
+
 ## Task 27 — LLM Client And Prompt Builder
 
 Status: next planned task
 
 Dependencies:
 
-- Tasks 21-26G
+- Tasks 21-26H
 
 Goal:
 

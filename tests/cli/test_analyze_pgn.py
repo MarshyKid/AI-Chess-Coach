@@ -83,6 +83,8 @@ class AnalyzePgnCliTest(unittest.TestCase):
             "- hanging_piece_created frequency=1 severity=50.0 supporting_events=1",
             output,
         )
+        self.assertIn("- High-Impact Strengths: none", output)
+        self.assertIn("- Execution Strengths: fork_created", output)
         self.assertIn("- Weaknesses: hanging_piece_created", output)
         self.assertIn("Coaching Moments (1)", output)
         self.assertIn("- Hanging Piece Created", output)
@@ -103,7 +105,8 @@ class AnalyzePgnCliTest(unittest.TestCase):
         self.assertIn("Detected Events (0)", output)
         self.assertIn("Verified Events (0)", output)
         self.assertIn("Detected Patterns (0)", output)
-        self.assertIn("- Strengths: none", output)
+        self.assertIn("- High-Impact Strengths: none", output)
+        self.assertIn("- Execution Strengths: none", output)
         self.assertIn("- Weaknesses: none", output)
         self.assertIn("- Recurring Themes: none", output)
         self.assertIn("Coaching Moments (0)", output)
@@ -356,6 +359,14 @@ def populated_result() -> GameAnalysisResult:
         strengths=(),
         weaknesses=(pattern,),
         recurring_themes=(pattern,),
+        execution_strengths=(
+            DetectedPattern(
+                pattern_type="fork_created",
+                frequency=1,
+                severity=1.0,
+                supporting_events=(),
+            ),
+        ),
     )
     moment = CoachingMoment(
         title="Hanging Piece Created",

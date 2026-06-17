@@ -16,6 +16,7 @@ def make_pattern(pattern_type: str = "hanging_piece_created") -> DetectedPattern
 class WeaknessProfileTest(unittest.TestCase):
     def test_can_be_constructed_with_strengths_weaknesses_and_recurring_themes(self) -> None:
         strength = make_pattern("knight_outpost_created")
+        execution_strength = make_pattern("fork_created")
         weakness = make_pattern("hanging_piece_created")
         neutral = make_pattern("neutral_pattern")
 
@@ -23,11 +24,22 @@ class WeaknessProfileTest(unittest.TestCase):
             strengths=(strength,),
             weaknesses=(weakness,),
             recurring_themes=(strength, weakness, neutral),
+            execution_strengths=(execution_strength,),
         )
 
         self.assertEqual(profile.strengths, (strength,))
         self.assertEqual(profile.weaknesses, (weakness,))
         self.assertEqual(profile.recurring_themes, (strength, weakness, neutral))
+        self.assertEqual(profile.execution_strengths, (execution_strength,))
+
+    def test_execution_strengths_default_to_empty_tuple(self) -> None:
+        profile = WeaknessProfile(
+            strengths=(),
+            weaknesses=(),
+            recurring_themes=(),
+        )
+
+        self.assertEqual(profile.execution_strengths, ())
 
     def test_model_is_frozen(self) -> None:
         profile = WeaknessProfile(

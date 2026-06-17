@@ -75,7 +75,8 @@ def format_result(result: GameAnalysisResult) -> str:
         [
             "",
             "Weakness Profile",
-            f"- Strengths: {_pattern_types(result.weakness_profile.strengths)}",
+            f"- High-Impact Strengths: {_pattern_types(result.weakness_profile.strengths)}",
+            f"- Execution Strengths: {_pattern_types(result.weakness_profile.execution_strengths)}",
             f"- Weaknesses: {_pattern_types(result.weakness_profile.weaknesses)}",
             f"- Recurring Themes: {_pattern_types(result.weakness_profile.recurring_themes)}",
             "",
