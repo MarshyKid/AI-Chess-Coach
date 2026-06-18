@@ -630,6 +630,37 @@ Rules:
 
 ---
 
+## LLMPrompt
+
+Represents the provider-agnostic prompt boundary for future LLM clients.
+
+Purpose:
+
+Carries grounded coaching instructions and structured evidence without binding
+the backend to a specific LLM provider.
+
+Expected file:
+
+```text
+src/ai_chess_coach/coaching/llm_client.py
+```
+
+Fields:
+
+- `system`
+- `user`
+
+Rules:
+
+- Built by `PromptBuilder` from structured evidence only.
+- Uses selected or retrieved evidence such as coaching moments, verified events,
+  detected patterns, and weakness profiles.
+- Must not accept raw PGNs as an evidence input.
+- Must not ask the LLM to calculate moves, analyze positions, or verify tactics.
+- Real provider clients and chat orchestration are outside the domain model.
+
+---
+
 # Model Lifecycle
 
 The intended lifecycle is:

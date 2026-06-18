@@ -400,3 +400,26 @@ Representative verified events
 It should not receive raw PGNs or an unfiltered dump of every detector event by default.
 
 This keeps the LLM as a communicator and teacher over verified evidence, not as the chess analysis engine.
+
+## Provider-Agnostic Prompt Boundary
+
+`PromptBuilder` creates deterministic `LLMPrompt` objects from structured
+evidence only. The prompt has separate `system` and `user` fields so future
+provider clients can map them to provider-specific message formats without
+changing coaching evidence construction.
+
+The prompt builder accepts:
+
+- user question
+- selected coaching moments
+- retrieved verified events
+- retrieved or profile-relevant detected patterns
+- weakness profile data, including execution strengths
+
+It does not accept raw PGN text as evidence. The user question may contain
+ordinary chess notation, but the system instructions tell the LLM not to analyze
+raw PGNs, FENs, or unsupported chess claims.
+
+Task 27 does not add a real provider, network call, API key handling,
+conversation memory, streaming, or LLM chat orchestration. Those remain future
+coaching-layer tasks.

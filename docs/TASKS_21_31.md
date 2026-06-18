@@ -14,7 +14,7 @@ The LLM must not do chess correctness. Chess correctness comes from deterministi
 
 ## Current Project State
 
-Tasks 1-26I are complete and accepted.
+Tasks 1-27 are complete and accepted.
 
 The current backend can:
 
@@ -28,6 +28,7 @@ The current backend can:
 - build a relevance-filtered user-facing weakness profile
 - select coaching moments
 - retrieve verified events using canonical mate/candidate-aware impact ranking
+- build provider-agnostic grounded prompts from structured evidence
 - print a backend-only CLI review
 
 Implemented detectors:
@@ -505,7 +506,7 @@ Rules:
 
 ## Task 27 — LLM Client And Prompt Builder
 
-Status: next planned task
+Status: complete and accepted after implementation
 
 Dependencies:
 
@@ -528,6 +529,7 @@ Deliverables:
 
 - `LLMClient` protocol or abstraction
 - `PromptBuilder` for evidence-grounded coaching prompts
+- immutable `LLMPrompt` value object with separate `system` and `user` fields
 
 Acceptance criteria:
 
@@ -540,6 +542,8 @@ Acceptance criteria:
 - Prompt explicitly instructs the LLM to use only supplied evidence.
 - Prompt explicitly forbids raw chess analysis, move calculation, and unsupported claims.
 - Prompt treats selected coaching moments as the primary user-facing teaching points.
+- Prompt includes weakness profile execution strengths when supplied.
+- Prompt distinguishes centipawn impact from mate-aware rank impact.
 - LLM client can be mocked in tests.
 - Tests pass.
 
@@ -548,6 +552,8 @@ Rules / non-goals:
 - Do not call a real LLM in unit tests.
 - Do not send raw PGNs to the LLM.
 - Do not ask the LLM to analyze chess positions.
+- Do not add provider SDK dependencies, API key handling, CLI wiring,
+  conversation memory, streaming, or retrieval orchestration.
 - Do not call Stockfish.
 - Do not add frontend, database, auth, deployment, or persistence.
 
