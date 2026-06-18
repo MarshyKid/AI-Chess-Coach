@@ -6,6 +6,7 @@ from ai_chess_coach.coaching.evidence_formatter import (
     format_coaching_moment_details,
     format_supporting_event_detail,
 )
+from ai_chess_coach.coaching.llm_chat_coach import LLMChatCoach
 from ai_chess_coach.coaching.llm_client import LLMClient, LLMPrompt
 from ai_chess_coach.coaching.prompt_builder import PromptBuilder
 from ai_chess_coach.coaching.review_generator import ReviewGenerator
@@ -13,6 +14,7 @@ from ai_chess_coach.coaching.review_generator import ReviewGenerator
 __all__ = [
     "ChatCoach",
     "CoachingMomentSelector",
+    "LLMChatCoach",
     "LLMClient",
     "LLMPrompt",
     "PromptBuilder",

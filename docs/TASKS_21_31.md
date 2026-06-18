@@ -14,7 +14,7 @@ The LLM must not do chess correctness. Chess correctness comes from deterministi
 
 ## Current Project State
 
-Tasks 1-27 are complete and accepted.
+Tasks 1-28 are complete and accepted.
 
 The current backend can:
 
@@ -29,6 +29,7 @@ The current backend can:
 - select coaching moments
 - retrieve verified events using canonical mate/candidate-aware impact ranking
 - build provider-agnostic grounded prompts from structured evidence
+- answer through an injected provider-agnostic LLM client using grounded prompts
 - print a backend-only CLI review
 
 Implemented detectors:
@@ -561,7 +562,7 @@ Rules / non-goals:
 
 ## Task 28 — LLM-Grounded Conversational Coach
 
-Status: planned
+Status: complete and accepted after implementation
 
 Dependencies:
 
@@ -587,6 +588,8 @@ Acceptance criteria:
 - Tests use a fake or mock LLM client.
 - Tests verify selected coaching moments and retrieved evidence are included in the prompt.
 - Tests verify raw PGNs are rejected or not accepted.
+- Empty evidence is allowed and remains grounded through the prompt builder.
+- Client exceptions propagate until real provider adapters define a shared error model.
 
 Rules / non-goals:
 
@@ -595,6 +598,8 @@ Rules / non-goals:
 - LLM must not call Stockfish.
 - LLM must not perform direct chess analysis.
 - LLM should explain and synthesize retrieved or selected evidence only.
+- No concrete provider SDK, API key handling, CLI wiring, retrieval
+  orchestration, memory, streaming, or embeddings.
 - No frontend, database, auth, deployment, or persistence.
 
 ---

@@ -423,3 +423,16 @@ raw PGNs, FENs, or unsupported chess claims.
 Task 27 does not add a real provider, network call, API key handling,
 conversation memory, streaming, or LLM chat orchestration. Those remain future
 coaching-layer tasks.
+
+## LLM Chat Coach Orchestration
+
+`LLMChatCoach` is the first LLM-facing conversational coach wrapper. It does
+not retrieve evidence and does not perform chess analysis. Callers provide the
+already selected or retrieved evidence, and `LLMChatCoach`:
+
+1. delegates prompt construction to `PromptBuilder`
+2. sends the resulting `LLMPrompt` to an injected `LLMClient`
+3. returns the generated response
+
+The injected client is provider-agnostic. Real provider adapters, API keys, CLI
+wiring, memory, streaming, and retrieval orchestration remain future tasks.
