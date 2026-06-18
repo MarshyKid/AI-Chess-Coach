@@ -14,7 +14,7 @@ The LLM must not do chess correctness. Chess correctness comes from deterministi
 
 ## Current Project State
 
-Tasks 1-29 are complete and accepted.
+Tasks 1-30 are complete and accepted.
 
 The current backend can:
 
@@ -32,6 +32,7 @@ The current backend can:
 - answer through an injected provider-agnostic LLM client using grounded prompts
 - protect the LLM boundary with grounding tests and documentation
 - print a backend-only CLI review
+- run a small golden PGN regression corpus for backend MVP readiness
 
 Implemented detectors:
 
@@ -646,7 +647,7 @@ Rules / non-goals:
 
 ## Task 30 — Golden PGN Regression Corpus And Backend MVP Readiness
 
-Status: planned
+Status: complete and accepted after implementation
 
 Dependencies:
 

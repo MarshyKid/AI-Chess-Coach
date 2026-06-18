@@ -1,0 +1,6 @@
+[Event "Golden Hanging Piece"]
+[SetUp "1"]
+[FEN "k2r4/8/8/8/8/8/4B3/4K3 w - - 0 1"]
+[Result "*"]
+
+1. Bd3 *
