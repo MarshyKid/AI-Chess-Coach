@@ -14,7 +14,7 @@ The LLM must not do chess correctness. Chess correctness comes from deterministi
 
 ## Current Project State
 
-Tasks 1-28 are complete and accepted.
+Tasks 1-29 are complete and accepted.
 
 The current backend can:
 
@@ -30,6 +30,7 @@ The current backend can:
 - retrieve verified events using canonical mate/candidate-aware impact ranking
 - build provider-agnostic grounded prompts from structured evidence
 - answer through an injected provider-agnostic LLM client using grounded prompts
+- protect the LLM boundary with grounding tests and documentation
 - print a backend-only CLI review
 
 Implemented detectors:
@@ -606,7 +607,7 @@ Rules / non-goals:
 
 ## Task 29 — LLM Grounding And Safety Tests
 
-Status: planned
+Status: complete and accepted after implementation
 
 Dependencies:
 
@@ -631,6 +632,9 @@ Acceptance criteria:
 - Tests verify prompts instruct the LLM not to invent unsupported chess claims.
 - Tests verify prompts distinguish evidence from user question text.
 - Documentation explains that the LLM is a communicator, not the chess analysis engine.
+- Tests verify prompt-injection-like question text does not remove grounding instructions.
+- Tests verify PGN/FEN-looking question text remains question text, not verified evidence.
+- Tests verify runtime LLM modules remain free of engine, detector, provider, and network imports.
 
 Rules / non-goals:
 

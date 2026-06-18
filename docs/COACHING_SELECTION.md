@@ -436,3 +436,8 @@ already selected or retrieved evidence, and `LLMChatCoach`:
 
 The injected client is provider-agnostic. Real provider adapters, API keys, CLI
 wiring, memory, streaming, and retrieval orchestration remain future tasks.
+
+The full LLM grounding policy is documented in `docs/LLM_GROUNDING.md`. Future
+provider adapters must preserve that boundary: the LLM explains selected or
+retrieved evidence, but it does not analyze raw PGNs, calculate moves, verify
+tactics, or invent unsupported chess claims.
