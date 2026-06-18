@@ -2,6 +2,19 @@
 
 # AI Chess Coach Implementation Tasks
 
+This file defines the original foundational task sequence through Task 20.
+
+Roadmap continuation:
+
+- Tasks 1-30: backend MVP, LLM prompt boundary, grounded chat wrapper, and
+  golden PGN regression corpus are complete.
+- Tasks 31-36: product-facing vertical slice: real LLM provider, LLM CLI demo,
+  minimal API, minimal frontend, board viewer, and demo polish.
+- Tasks 37+: detector expansion resumes after the product-facing vertical slice.
+
+Use `docs/TASKS_21_31.md` for completed backend MVP history and
+`docs/TASKS_31_40.md` for the current next implementation sequence.
+
 ## Status Legend
 
 * [ ] Not Started

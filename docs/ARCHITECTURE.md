@@ -427,10 +427,12 @@ Rules:
 
 # Backend-First Boundary
 
-Until the chess intelligence engine is validated, do not build:
+The chess intelligence backend MVP is now validated enough to support a
+product-facing vertical slice. The next layers should still respect backend
+ownership of chess correctness.
 
-- React frontend
-- Vite application
+Do not build these unless the current task explicitly calls for them:
+
 - authentication
 - user accounts
 - database persistence
@@ -438,13 +440,14 @@ Until the chess intelligence engine is validated, do not build:
 - analytics dashboards
 - mobile applications
 
-The initial implementation should be usable through tests and simple backend interfaces.
+The product-facing vertical slice may add a minimal API and Vite React frontend,
+but those layers must consume backend analysis outputs.
 
 ---
 
 # Future Frontend Boundary
 
-A future frontend may use:
+The minimal frontend phase may use:
 
 - Vite
 - React
@@ -498,6 +501,28 @@ The Coaching MVP is complete when the system can:
 
 ---
 
+# Product-Facing Vertical Slice
+
+The next milestone after the backend MVP is:
+
+```text
+PGN input -> backend analysis -> selected coaching evidence -> real LLM answer -> simple UI
+```
+
+This milestone should add, in order:
+
+1. a real provider adapter behind `LLMClient`
+2. a backend LLM CLI demo
+3. a minimal backend API
+4. a minimal Vite React frontend
+5. a board and position viewer
+6. demo polish
+
+Detector expansion is intentionally deferred until this vertical slice is
+usable. The current detector set is enough for an MVP demo.
+
+---
+
 # Design Constraint Summary
 
 The most important constraints are:
@@ -509,4 +534,5 @@ The most important constraints are:
 5. Engine verification produces `EngineAssessment` and `VerifiedEvent`.
 6. Profiling is built from verified events.
 7. Coaching explains evidence but does not discover evidence.
-8. Frontend development waits until the backend chess intelligence engine is validated.
+8. Frontend development consumes backend evidence and does not perform chess analysis.
+9. Detector expansion waits until after the product-facing vertical slice.

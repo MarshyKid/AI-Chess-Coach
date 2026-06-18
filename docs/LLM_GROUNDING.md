@@ -81,6 +81,9 @@ mate-aware rank impact, but never as centipawns.
 Real Anthropic, OpenAI, Gemini, or other provider adapters must preserve this
 boundary:
 
+- provider adapters must implement the existing `LLMClient` boundary
+- provider adapters must accept `LLMPrompt`
+- provider adapters must preserve separate system and user prompt content
 - no raw-PGN-to-LLM shortcut
 - no provider-side chess analysis
 - no API key or network behavior in unit tests
@@ -89,3 +92,7 @@ boundary:
 
 Provider adapters should map `LLMPrompt.system` and `LLMPrompt.user` to the
 provider's message format without changing the evidence contract.
+
+The next roadmap phase adds one real provider adapter before CLI/API/frontend
+wiring. Real provider integration must not broaden the LLM's responsibility:
+the LLM explains selected or retrieved evidence only.

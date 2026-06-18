@@ -86,18 +86,36 @@ Harden the backend MVP after the vertical slice, selected coaching moments, and 
 - Architecture boundary tests
 - Stable CLI demo output
 
+## Phase 11 — Product-Facing Vertical Slice
+
+Make the app feel usable before expanding detector breadth.
+
+- Real LLM provider adapter
+- Backend LLM CLI demo
+- Minimal backend API
+- Minimal Vite React frontend
+- Board and position viewer
+- Product demo polish
+
+This phase proves:
+
+```text
+PGN input -> backend analysis -> selected coaching evidence -> real LLM answer -> simple UI
+```
+
+## Phase 12 — Detector Expansion
+
+Add more chess concepts only after the product-facing vertical slice exists.
+
+- Detector expansion readiness
+- LoosePieceDetector, if selected
+- PinDetector, if selected
+- SkewerDetector, BackRankWeaknessDetector, PassedPawnDetector, or pawn structure foundations
+
 ## Later
 
-These should wait until the backend MVP and evidence-grounded coaching loop are useful.
+These should wait until the product-facing vertical slice is useful.
 
-- LoosePieceDetector
-- PinDetector
-- BackRankWeaknessDetector
-- Pawn structure feature foundation
-- PassedPawnDetector
-- more advanced detectors
-- FastAPI/backend API
 - persistence/database for user history
-- frontend
 - auth
 - deployment

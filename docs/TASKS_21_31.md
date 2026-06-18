@@ -1,6 +1,11 @@
-# Tasks 21-31 — Backend MVP And Evidence-Grounded Coaching Roadmap
+# Tasks 21-30 — Backend MVP And Evidence-Grounded Coaching Roadmap
 
 This file supersedes the older `docs/TASKS_21_30.md` roadmap for the current backend-first phase.
+
+Tasks 21-30 are complete. The next product-facing phase is documented in
+`docs/TASKS_31_40.md`. Detector expansion is intentionally deferred until after
+real LLM provider integration, a minimal API, and a minimal frontend vertical
+slice exist.
 
 The goal is to keep the project moving one task at a time while preserving the core architecture rule:
 
@@ -689,18 +694,30 @@ Rules / non-goals:
 
 ---
 
-## Task 31 — Detector Expansion Readiness
+## Deferred Detector Expansion Note
 
-Status: planned after backend MVP readiness
+Status: deferred until after product-facing vertical slice
 
 Dependencies:
 
-- Task 30
+- Task 36 from `docs/TASKS_31_40.md`
 - `docs/ADDING_DETECTORS.md`
 
 Goal:
 
 Prepare for adding new detectors without weakening architecture boundaries or duplicating chess logic.
+
+Important update:
+
+Detector expansion is not the immediate next priority after Task 30. The current
+detector set is sufficient for a working MVP demo. The next milestone is:
+
+```text
+PGN input -> backend analysis -> selected coaching evidence -> real LLM answer -> simple UI
+```
+
+Use `docs/TASKS_31_40.md` for the current next task sequence. The current
+Task 31 is now `Real LLM Provider Adapter`, not detector expansion.
 
 Candidate future detectors:
 
@@ -736,11 +753,9 @@ Rules / non-goals:
 
 ## Later
 
-These remain intentionally deferred until the backend MVP and evidence-grounded conversation loop are useful:
+These remain intentionally deferred until the product-facing vertical slice is useful:
 
 - More detectors
-- FastAPI/backend API
 - Persistence/database for user history
-- Frontend
 - Auth
 - Deployment

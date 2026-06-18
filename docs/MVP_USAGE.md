@@ -66,6 +66,28 @@ The CLI prints:
 Raw verified events are intentionally preserved even when only a smaller set of
 coaching moments is selected for review.
 
+## Current MVP Boundary
+
+The current MVP is backend-only. It proves the deterministic analysis and
+evidence-grounded coaching path, but it is not yet a user-facing app.
+
+The next phase is the product-facing vertical slice:
+
+```text
+PGN input -> backend analysis -> selected coaching evidence -> real LLM answer -> simple UI
+```
+
+Planned next layers:
+
+1. real provider adapter behind `LLMClient`
+2. backend LLM CLI demo
+3. minimal backend API
+4. minimal Vite React frontend
+5. board and position viewer
+6. demo polish
+
+Detector expansion is intentionally postponed until after this vertical slice.
+
 ## What This MVP Does Not Include
 
 The backend MVP does not include:
@@ -78,4 +100,5 @@ The backend MVP does not include:
 - deployment configuration
 
 Those remain future layers. The current focus is a deterministic backend path
-from PGN analysis to grounded coaching evidence.
+from PGN analysis to grounded coaching evidence, followed next by a thin
+product-facing loop over that evidence.

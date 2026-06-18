@@ -4,6 +4,28 @@ This guide explains how to add future detectors without breaking the AI Chess Co
 
 Read this before adding any new detector.
 
+## Current Roadmap Priority
+
+Detector expansion is intentionally postponed until after the product-facing
+vertical slice in `docs/TASKS_31_40.md`.
+
+The current detector set is sufficient for the MVP demo:
+
+- `HangingPieceDetector`
+- `ForkDetector`
+- `KnightOutpostDetector`
+
+The next priority is:
+
+```text
+PGN input -> backend analysis -> selected coaching evidence -> real LLM answer -> simple UI
+```
+
+Do not start a new detector task until the real provider, backend LLM CLI,
+minimal API, minimal frontend, board viewer, and product polish tasks are
+complete or explicitly reprioritized. Once detector work resumes, the process in
+this guide remains the required process.
+
 ## Core Rule
 
 Detectors identify structured chess events. They do not decide coaching value and they do not explain chess to the user.
