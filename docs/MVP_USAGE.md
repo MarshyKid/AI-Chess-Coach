@@ -79,21 +79,45 @@ PGN input -> backend analysis -> selected coaching evidence -> real LLM answer -
 
 Planned next layers:
 
-1. real provider adapter behind `LLMClient`
-2. backend LLM CLI demo
-3. minimal backend API
-4. minimal Vite React frontend
-5. board and position viewer
-6. demo polish
+1. backend LLM CLI demo
+2. minimal backend API
+3. minimal Vite React frontend
+4. board and position viewer
+5. demo polish
 
 Detector expansion is intentionally postponed until after this vertical slice.
+
+## OpenAI Provider Adapter
+
+The backend now includes an optional OpenAI adapter behind the existing
+`LLMClient` protocol:
+
+```python
+from ai_chess_coach.coaching.providers import OpenAILLMClient
+```
+
+Install the optional dependency and configure credentials only when you want to
+call the real provider:
+
+```bash
+uv sync --extra openai
+export OPENAI_API_KEY=...
+export AI_CHESS_COACH_OPENAI_MODEL=gpt-5.4-mini
+```
+
+`AI_CHESS_COACH_OPENAI_MODEL` is optional. If omitted, the adapter uses its
+documented `DEFAULT_OPENAI_MODEL`, which is intentionally easy to change as
+provider model availability evolves.
+
+The adapter is not wired into the CLI yet. Task 32 will connect backend
+analysis, selected coaching evidence, and an injected LLM provider from the
+command line.
 
 ## What This MVP Does Not Include
 
 The backend MVP does not include:
 
-- real LLM provider clients
-- API keys or network LLM calls
+- CLI/API/frontend wiring for real LLM provider calls
 - frontend UI
 - database persistence
 - authentication

@@ -301,11 +301,14 @@ class LLMGroundingTest(unittest.TestCase):
                 self.assertNotIn("httpx", lower_source)
                 self.assertNotIn("socket", lower_source)
 
-    def test_runtime_source_has_no_provider_sdks_anywhere(self) -> None:
+    def test_generic_runtime_source_has_no_provider_sdks(self) -> None:
         src_root = Path(__file__).parents[2] / "src" / "ai_chess_coach"
         provider_terms = ("openai", "anthropic", "gemini", "requests", "httpx")
 
         for path in src_root.rglob("*.py"):
+            if "providers" in path.parts:
+                continue
+
             source = path.read_text(encoding="utf-8").lower()
             with self.subTest(path=path):
                 for term in provider_terms:

@@ -7,6 +7,11 @@ dependencies = [
     "python-chess>=1.999",
 ]
 
+[project.optional-dependencies]
+openai = [
+    "openai>=2.0.0,<3",
+]
+
 [project.scripts]
 ai-chess-coach-analyze = "ai_chess_coach.cli.analyze_pgn:main"
 

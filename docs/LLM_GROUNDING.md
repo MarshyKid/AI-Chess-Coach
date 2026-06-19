@@ -76,10 +76,9 @@ Grounded prompts must instruct the LLM to:
 Mate-aware rank values are internal ordering values. They may be described as
 mate-aware rank impact, but never as centipawns.
 
-## Future Provider Clients
+## Provider Clients
 
-Real Anthropic, OpenAI, Gemini, or other provider adapters must preserve this
-boundary:
+Real provider adapters must preserve this boundary:
 
 - provider adapters must implement the existing `LLMClient` boundary
 - provider adapters must accept `LLMPrompt`
@@ -93,6 +92,32 @@ boundary:
 Provider adapters should map `LLMPrompt.system` and `LLMPrompt.user` to the
 provider's message format without changing the evidence contract.
 
-The next roadmap phase adds one real provider adapter before CLI/API/frontend
-wiring. Real provider integration must not broaden the LLM's responsibility:
-the LLM explains selected or retrieved evidence only.
+## OpenAI Provider Adapter
+
+Task 31 adds `OpenAILLMClient` under
+`ai_chess_coach.coaching.providers`. It is intentionally not exported from the
+top-level `ai_chess_coach.coaching` package so generic coaching imports stay
+provider-neutral.
+
+The adapter:
+
+- accepts `LLMPrompt`
+- sends `LLMPrompt.system` as OpenAI Responses API instructions
+- sends `LLMPrompt.user` as the user input
+- returns plain generated text from `response.output_text`
+- reads API credentials from `OPENAI_API_KEY` or an explicit constructor
+  argument
+- reads the model from an explicit constructor argument,
+  `AI_CHESS_COACH_OPENAI_MODEL`, or `DEFAULT_OPENAI_MODEL`
+
+Install the optional SDK dependency only when using the real provider:
+
+```bash
+uv sync --extra openai
+```
+
+Unit tests use injected fake provider clients only. They must not require an API
+key, provider SDK import, or network access.
+
+Real provider integration must not broaden the LLM's responsibility: the LLM
+explains selected or retrieved evidence only.

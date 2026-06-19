@@ -27,7 +27,7 @@ produce chess correctness, and the LLM explains supplied evidence only.
 
 ## Task 31 — Real LLM Provider Adapter
 
-Status: planned
+Status: complete
 
 Dependencies:
 
@@ -57,11 +57,17 @@ Recommended provider:
 
 Acceptance criteria:
 
-- A concrete provider adapter exists.
+- A concrete OpenAI provider adapter exists under
+  `ai_chess_coach.coaching.providers`.
 - The adapter accepts `LLMPrompt`.
-- The adapter preserves system/user message separation.
-- API key is read from environment.
-- Missing API key behavior is clear.
+- The adapter preserves system/user message separation through the Responses
+  API.
+- API key is read from `OPENAI_API_KEY` or an explicit constructor argument.
+- Model is read from an explicit constructor argument,
+  `AI_CHESS_COACH_OPENAI_MODEL`, or the adapter's documented
+  `DEFAULT_OPENAI_MODEL`.
+- Missing API key, missing optional SDK dependency, provider failure, and empty
+  response behavior are clear.
 - Unit tests use mocks or fakes only.
 - No real provider call or network access is required for tests.
 
