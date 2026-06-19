@@ -16,12 +16,19 @@ The next milestone is to make the system usable end to end:
 PGN input
 -> backend analysis
 -> selected coaching evidence
--> real LLM answer
+-> real or local LLM answer
 -> simple UI
 ```
 
 The architecture rule remains unchanged: detectors and engine verification
 produce chess correctness, and the LLM explains supplied evidence only.
+
+Provider strategy for this phase:
+
+- Task 31 keeps the cloud OpenAI adapter available for users with API billing.
+- Task 32 adds a local Ollama adapter so the MVP can run without paid cloud LLM
+  tokens.
+- Task 33 wires the CLI to a selectable provider.
 
 ---
 
@@ -41,6 +48,10 @@ Goal:
 Add the first real provider implementation behind the provider-agnostic
 `LLMClient` protocol.
 
+Implemented provider:
+
+- OpenAI adapter under `ai_chess_coach.coaching.providers`
+
 Likely files:
 
 ```text
@@ -50,10 +61,6 @@ tests/coaching/test_openai_client.py
 docs/LLM_GROUNDING.md
 docs/MVP_USAGE.md
 ```
-
-Recommended provider:
-
-- OpenAI, unless a later task explicitly chooses a different provider.
 
 Acceptance criteria:
 
@@ -82,31 +89,139 @@ Rules / non-goals:
 
 ---
 
-## Task 32 — Backend LLM CLI Demo
+## Task 32 — Local Ollama Provider Adapter
 
 Status: planned
 
 Dependencies:
 
 - Task 31
+- Existing `LLMClient`
+- Existing `LLMPrompt`
+- Existing provider package structure
+
+Goal:
+
+Add a local-model provider adapter behind the existing `LLMClient` protocol so
+users can run the coaching loop without paid cloud LLM API tokens.
+
+Recommended local provider:
+
+- Ollama, using its local HTTP chat API.
+
+Likely files:
+
+```text
+src/ai_chess_coach/coaching/providers/ollama_client.py
+tests/coaching/test_ollama_client.py
+docs/LLM_GROUNDING.md
+docs/MVP_USAGE.md
+docs/TASKS_31_40.md
+```
+
+Recommended adapter shape:
+
+```python
+class OllamaLLMClient:
+    def __init__(
+        self,
+        *,
+        model: str | None = None,
+        base_url: str | None = None,
+        client: object | None = None,
+    ) -> None: ...
+
+    def generate(self, prompt: LLMPrompt) -> str: ...
+```
+
+Expected behavior:
+
+- Accept `LLMPrompt`.
+- Preserve separate system/user message content.
+- Send a non-streaming local chat request to Ollama.
+- Default base URL should be local-only, for example `http://localhost:11434`.
+- Model should be configurable by constructor and environment variable.
+- Use an injected fake client in tests.
+- Do not require API keys.
+- Do not require paid cloud tokens.
+- Do not make real Ollama/network calls in automated tests.
+
+Suggested environment variables:
+
+```text
+AI_CHESS_COACH_OLLAMA_MODEL
+AI_CHESS_COACH_OLLAMA_BASE_URL
+```
+
+Suggested local setup documentation:
+
+```bash
+brew install ollama
+ollama pull llama3.2:3b
+ollama serve
+```
+
+Acceptance criteria:
+
+- A concrete Ollama provider adapter exists under
+  `ai_chess_coach.coaching.providers`.
+- The adapter accepts `LLMPrompt`.
+- The adapter maps `LLMPrompt.system` and `LLMPrompt.user` to local chat
+  messages.
+- The adapter requests non-streaming output for MVP simplicity.
+- Local model and base URL configuration are clear.
+- Ollama unavailable / connection failure behavior is clear.
+- Missing model or empty response behavior is clear.
+- Unit tests use fake/mocked clients only.
+- No real local server, network call, or model download is required for tests.
+- No detector, engine, replay, retrieval, PromptBuilder, or LLMChatCoach logic is
+  called by the provider adapter.
+
+Rules / non-goals:
+
+- Do not add CLI wiring yet; that is Task 33.
+- Do not add frontend or API work.
+- Do not add streaming.
+- Do not add memory or embeddings.
+- Do not add detector expansion.
+- Do not require Ollama in the automated test suite.
+- Prefer standard-library HTTP or a very small optional dependency; do not add a
+  heavy framework for this adapter.
+
+---
+
+## Task 33 — Backend LLM CLI Demo
+
+Status: planned
+
+Dependencies:
+
+- Task 31
+- Task 32
 - Existing backend analysis CLI
 - Existing `LLMChatCoach`
 
 Goal:
 
-Prove the complete backend plus real LLM loop from the command line.
+Prove the complete backend plus LLM loop from the command line, with a selectable
+provider.
 
 Possible command shape:
 
 ```bash
-uv run ai-chess-coach-chat game.pgn "What should I improve?"
+uv run ai-chess-coach-chat game.pgn "What should I improve?" --provider ollama
 ```
 
 Alternative, if simpler for the current CLI:
 
 ```bash
-uv run ai-chess-coach-analyze game.pgn --ask "What should I improve?"
+uv run ai-chess-coach-analyze game.pgn --ask "What should I improve?" --provider ollama
 ```
+
+Provider options:
+
+- `ollama` should be the recommended no-payment local default.
+- `openai` should remain available for users with API billing.
 
 Expected flow:
 
@@ -115,17 +230,22 @@ PGN
 -> analysis pipeline
 -> selected coaching moments/profile
 -> PromptBuilder
--> provider LLMClient
+-> selected LLMClient provider
 -> answer
 ```
 
 Acceptance criteria:
 
 - CLI can analyze a PGN and ask a question.
+- CLI can use the Ollama provider for local no-token demos.
+- CLI can use the OpenAI provider when configured.
 - CLI uses selected coaching moments and/or retrieved/profile evidence.
 - CLI does not send raw PGN as LLM evidence.
 - Missing Stockfish is handled clearly.
-- Missing provider API key is handled clearly.
+- Missing or unavailable LLM provider is handled clearly.
+- Missing OpenAI API key is handled clearly when `--provider openai` is selected.
+- Missing local Ollama server/model is handled clearly when `--provider ollama`
+  is selected.
 - Tests use fake LLM clients and fake or deterministic dependencies where needed.
 - Real provider calls are not required in automated tests.
 
@@ -136,13 +256,13 @@ Rules / non-goals:
 
 ---
 
-## Task 33 — Minimal Backend API
+## Task 34 — Minimal Backend API
 
 Status: planned
 
 Dependencies:
 
-- Task 32
+- Task 33
 
 Goal:
 
@@ -155,20 +275,22 @@ POST /analyze
 POST /coach
 ```
 
-Design decision to make during Task 33:
+Design decision to make during Task 34:
 
 - Because there is no persistence yet, choose whether `/coach` accepts PGN plus
   question in one request or accepts structured evidence returned by `/analyze`.
 - Prefer the simpler MVP option and document the tradeoff.
+- Decide how provider selection should work locally, for example `ollama` by
+  default and `openai` by explicit configuration.
 
 Acceptance criteria:
 
 - API exposes basic PGN analysis.
 - API exposes basic evidence-grounded coaching.
 - API returns JSON suitable for a frontend.
+- API can use fake LLM clients in tests.
 - API does not expose raw internal objects directly if a simpler response DTO is
   better.
-- Tests use fake LLM clients.
 - No auth or persistence is added.
 
 Rules / non-goals:
@@ -178,13 +300,13 @@ Rules / non-goals:
 
 ---
 
-## Task 34 — Minimal Vite React Frontend
+## Task 35 — Minimal Vite React Frontend
 
 Status: planned
 
 Dependencies:
 
-- Task 33
+- Task 34
 
 Goal:
 
@@ -197,6 +319,7 @@ Core UI:
 - show selected coaching moments
 - show weakness profile summary
 - ask a question
+- choose or display the configured provider, if useful
 - show LLM answer
 
 Preferred stack:
@@ -222,13 +345,13 @@ Rules / non-goals:
 
 ---
 
-## Task 35 — Board And Position Viewer
+## Task 36 — Board And Position Viewer
 
 Status: planned
 
 Dependencies:
 
-- Task 34
+- Task 35
 
 Goal:
 
@@ -256,17 +379,17 @@ Rules / non-goals:
 
 ---
 
-## Task 36 — Product Vertical Slice Polish
+## Task 37 — Product Vertical Slice Polish
 
 Status: planned
 
 Dependencies:
 
-- Task 35
+- Task 36
 
 Goal:
 
-Make the app demoable as a small product.
+Make the app demoable as a small local product.
 
 Possible improvements:
 
@@ -275,12 +398,15 @@ Possible improvements:
 - prompt preview or debug mode for development
 - clearer empty states
 - better coaching answer formatting
+- provider setup help for Ollama and OpenAI
 - README or usage docs for the demo flow
 
 Acceptance criteria:
 
 - New user can run backend and frontend locally from docs.
 - Demo flow is documented.
+- No-payment local Ollama demo flow is documented.
+- Optional OpenAI demo flow is documented.
 - Current limitations are clear.
 - Tests still pass.
 
@@ -291,18 +417,19 @@ Rules / non-goals:
 
 ---
 
-## Task 37 — Detector Expansion Readiness
+## Task 38 — Detector Expansion Readiness
 
 Status: planned after product vertical slice
 
 Dependencies:
 
-- Task 36
+- Task 37
 - `docs/ADDING_DETECTORS.md`
 
 Goal:
 
-Resume detector work only after the real LLM/API/frontend vertical slice exists.
+Resume detector work only after the real/local LLM, API, and frontend vertical
+slice exists.
 
 Acceptance criteria:
 
@@ -318,17 +445,17 @@ Rules / non-goals:
 
 ---
 
-## Task 38 — First Post-MVP Detector
+## Task 39 — First Post-MVP Detector
 
-Status: planned after Task 37
+Status: planned after Task 38
 
 Dependencies:
 
-- Task 37
+- Task 38
 
 Goal:
 
-Add one detector chosen during Task 37.
+Add one detector chosen during Task 38.
 
 Candidate first detector:
 
@@ -344,31 +471,7 @@ Rules:
 
 ---
 
-## Task 39 — Second Post-MVP Detector
-
-Status: planned after Task 38
-
-Dependencies:
-
-- Task 38
-
-Goal:
-
-Add one additional detector after the first post-MVP detector is accepted.
-
-Candidate detector:
-
-- `PinDetector`
-
-Rules:
-
-- One detector only.
-- Do not bundle unrelated detector work.
-- Preserve API/frontend/LLM grounding behavior.
-
----
-
-## Task 40 — Third Post-MVP Detector Or Detector Infrastructure Follow-Up
+## Task 40 — Second Post-MVP Detector Or Detector Infrastructure Follow-Up
 
 Status: planned after Task 39
 
@@ -378,11 +481,12 @@ Dependencies:
 
 Goal:
 
-Add one more detector or a small detector infrastructure improvement discovered
-while implementing Tasks 38-39.
+Add one additional detector or a small detector infrastructure improvement
+discovered while implementing Tasks 38-39.
 
 Candidate detectors:
 
+- `PinDetector`
 - `SkewerDetector`
 - `BackRankWeaknessDetector`
 - `PassedPawnDetector`
@@ -391,6 +495,8 @@ Candidate detectors:
 Rules:
 
 - One focused task only.
+- Do not bundle unrelated detector work.
+- Preserve API/frontend/LLM grounding behavior.
 - No detector should call Stockfish or LLMs.
 - No detector should generate coaching prose.
 - Do not bypass `FeatureStore` for reusable chess facts.
