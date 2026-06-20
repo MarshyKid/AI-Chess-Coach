@@ -28,7 +28,7 @@ Provider strategy for this phase:
 - Task 31 keeps the cloud OpenAI adapter available for users with API billing.
 - Task 32 adds a local Ollama adapter so the MVP can run without paid cloud LLM
   tokens.
-- Task 33 wires the CLI to a selectable provider.
+- Task 33 wires the CLI to the local Ollama provider.
 
 ---
 
@@ -190,9 +190,9 @@ Rules / non-goals:
 
 ---
 
-## Task 33 — Backend LLM CLI Demo
+## Task 33 — Backend LLM CLI Demo With Ollama
 
-Status: planned
+Status: complete
 
 Dependencies:
 
@@ -203,25 +203,14 @@ Dependencies:
 
 Goal:
 
-Prove the complete backend plus LLM loop from the command line, with a selectable
-provider.
+Prove the complete backend plus local LLM loop from the command line using
+Ollama only.
 
-Possible command shape:
-
-```bash
-uv run ai-chess-coach-chat game.pgn "What should I improve?" --provider ollama
-```
-
-Alternative, if simpler for the current CLI:
+Command shape:
 
 ```bash
-uv run ai-chess-coach-analyze game.pgn --ask "What should I improve?" --provider ollama
+uv run ai-chess-coach-chat game.pgn "What should I improve?"
 ```
-
-Provider options:
-
-- `ollama` should be the recommended no-payment local default.
-- `openai` should remain available for users with API billing.
 
 Expected flow:
 
@@ -230,7 +219,7 @@ PGN
 -> analysis pipeline
 -> selected coaching moments/profile
 -> PromptBuilder
--> selected LLMClient provider
+-> OllamaLLMClient
 -> answer
 ```
 
@@ -238,19 +227,18 @@ Acceptance criteria:
 
 - CLI can analyze a PGN and ask a question.
 - CLI can use the Ollama provider for local no-token demos.
-- CLI can use the OpenAI provider when configured.
-- CLI uses selected coaching moments and/or retrieved/profile evidence.
+- CLI uses selected coaching moments and weakness profile evidence.
 - CLI does not send raw PGN as LLM evidence.
 - Missing Stockfish is handled clearly.
-- Missing or unavailable LLM provider is handled clearly.
-- Missing OpenAI API key is handled clearly when `--provider openai` is selected.
-- Missing local Ollama server/model is handled clearly when `--provider ollama`
-  is selected.
+- Missing or unavailable Ollama provider is handled clearly.
+- Missing local Ollama server/model is handled clearly.
 - Tests use fake LLM clients and fake or deterministic dependencies where needed.
 - Real provider calls are not required in automated tests.
 
 Rules / non-goals:
 
+- Do not add OpenAI CLI wiring.
+- Do not add provider selection.
 - Do not add frontend, API server, database, auth, streaming, or detector
   expansion.
 

@@ -66,6 +66,38 @@ The CLI prints:
 Raw verified events are intentionally preserved even when only a smaller set of
 coaching moments is selected for review.
 
+## Ask A Local LLM Question With Ollama
+
+After installing Ollama, pulling a model, and ensuring Stockfish is available,
+ask a grounded coaching question with:
+
+```bash
+uv run ai-chess-coach-chat path/to/game.pgn "What should I improve?"
+```
+
+Use a different local model:
+
+```bash
+uv run ai-chess-coach-chat path/to/game.pgn "What should I improve?" --model qwen2.5:7b
+```
+
+Use a different Ollama server URL:
+
+```bash
+uv run ai-chess-coach-chat path/to/game.pgn "What should I improve?" --ollama-base-url http://localhost:11434
+```
+
+The chat CLI uses the PGN only to run the deterministic backend analysis
+pipeline. It sends selected `CoachingMoment` objects and the `WeaknessProfile`
+to `LLMChatCoach`; it does not send raw PGN text to the LLM.
+
+Common runtime errors:
+
+- `Stockfish unavailable`: configure `STOCKFISH_PATH` or put `stockfish` on `PATH`
+- `Ollama unavailable`: run `ollama serve`
+- `Ollama model not found`: run `ollama pull llama3.2:3b` or pass `--model`
+- `Empty LLM response`: the local model returned no usable text
+
 ## Current MVP Boundary
 
 The current MVP is backend-only. It proves the deterministic analysis and
@@ -109,9 +141,8 @@ export AI_CHESS_COACH_OPENAI_MODEL=gpt-5.4-mini
 documented `DEFAULT_OPENAI_MODEL`, which is intentionally easy to change as
 provider model availability evolves.
 
-The adapter is not wired into the CLI yet. Task 33 will connect backend
-analysis, selected coaching evidence, and a selectable LLM provider from the
-command line.
+The adapter is not wired into the CLI yet. The current chat CLI intentionally
+uses Ollama only.
 
 ## Ollama Local Provider Adapter
 
@@ -160,14 +191,14 @@ PY
 This smoke test is intentionally manual. Automated tests use fake transports and
 do not require Ollama, a local server, or downloaded models.
 
-The adapter is not wired into the CLI yet. Task 33 will add provider selection
-to the backend LLM CLI demo.
+The Ollama adapter is wired into the chat CLI. OpenAI remains an optional
+provider adapter, but this CLI intentionally uses Ollama only.
 
 ## What This MVP Does Not Include
 
 The backend MVP does not include:
 
-- CLI/API/frontend wiring for real LLM provider calls
+- API/frontend wiring for real LLM provider calls
 - frontend UI
 - database persistence
 - authentication

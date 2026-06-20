@@ -151,3 +151,13 @@ installed, running, or loaded with a downloaded model.
 
 The local provider still receives only grounded prompts. It must not analyze raw
 PGNs, calculate moves, call detectors, call Stockfish, or retrieve evidence.
+
+## Ollama Chat CLI Boundary
+
+`ai-chess-coach-chat` proves the local LLM loop from the command line. The CLI
+may read raw PGN text only to run the deterministic backend analysis pipeline.
+It then calls `LLMChatCoach` with selected `CoachingMoment` objects and the
+`WeaknessProfile`.
+
+The CLI must not pass raw PGN text, raw full-game dumps, or unverified chess
+claims into `LLMChatCoach` or `PromptBuilder`.

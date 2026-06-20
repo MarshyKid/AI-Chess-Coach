@@ -14,6 +14,7 @@ openai = [
 
 [project.scripts]
 ai-chess-coach-analyze = "ai_chess_coach.cli.analyze_pgn:main"
+ai-chess-coach-chat = "ai_chess_coach.cli.chat_pgn:main"
 
 [build-system]
 requires = ["hatchling"]
