@@ -121,3 +121,33 @@ key, provider SDK import, or network access.
 
 Real provider integration must not broaden the LLM's responsibility: the LLM
 explains selected or retrieved evidence only.
+
+## Ollama Provider Adapter
+
+Task 32 adds `OllamaLLMClient` under
+`ai_chess_coach.coaching.providers` for no-payment local model usage. It is not
+exported from the top-level `ai_chess_coach.coaching` package.
+
+The adapter:
+
+- accepts `LLMPrompt`
+- sends `LLMPrompt.system` and `LLMPrompt.user` as separate Ollama chat messages
+- calls the local `/api/chat` endpoint with `stream: false`
+- returns plain generated text from `message.content`
+- reads the model from an explicit constructor argument,
+  `AI_CHESS_COACH_OLLAMA_MODEL`, or `DEFAULT_OLLAMA_MODEL`
+- reads the base URL from an explicit constructor argument,
+  `AI_CHESS_COACH_OLLAMA_BASE_URL`, or `DEFAULT_OLLAMA_BASE_URL`
+
+Typical local setup:
+
+```bash
+ollama pull llama3.2:3b
+ollama serve
+```
+
+Unit tests use injected fake transports only. They must not require Ollama to be
+installed, running, or loaded with a downloaded model.
+
+The local provider still receives only grounded prompts. It must not analyze raw
+PGNs, calculate moves, call detectors, call Stockfish, or retrieve evidence.

@@ -109,9 +109,59 @@ export AI_CHESS_COACH_OPENAI_MODEL=gpt-5.4-mini
 documented `DEFAULT_OPENAI_MODEL`, which is intentionally easy to change as
 provider model availability evolves.
 
-The adapter is not wired into the CLI yet. Task 32 will connect backend
-analysis, selected coaching evidence, and an injected LLM provider from the
+The adapter is not wired into the CLI yet. Task 33 will connect backend
+analysis, selected coaching evidence, and a selectable LLM provider from the
 command line.
+
+## Ollama Local Provider Adapter
+
+The backend also includes an Ollama adapter behind `LLMClient` for no-payment
+local model use:
+
+```python
+from ai_chess_coach.coaching.providers import OllamaLLMClient
+```
+
+Install and run Ollama separately, then pull a local model:
+
+```bash
+ollama pull llama3.2:3b
+ollama serve
+```
+
+Optional configuration:
+
+```bash
+export AI_CHESS_COACH_OLLAMA_MODEL=llama3.2:3b
+export AI_CHESS_COACH_OLLAMA_BASE_URL=http://localhost:11434
+```
+
+`llama3.2:3b` is a pragmatic small local default. If your machine can run a
+larger model, alternatives such as `qwen2.5:7b` may produce better coaching
+language.
+
+Manual smoke test:
+
+```bash
+uv run python - <<'PY'
+from ai_chess_coach.coaching import LLMPrompt
+from ai_chess_coach.coaching.providers import OllamaLLMClient
+
+client = OllamaLLMClient()
+prompt = LLMPrompt(
+    system="You are a concise test assistant. Reply in one sentence.",
+    user="Say that the local Ollama provider adapter is working.",
+)
+
+print(client.generate(prompt))
+PY
+```
+
+This smoke test is intentionally manual. Automated tests use fake transports and
+do not require Ollama, a local server, or downloaded models.
+
+The adapter is not wired into the CLI yet. Task 33 will add provider selection
+to the backend LLM CLI demo.
 
 ## What This MVP Does Not Include
 

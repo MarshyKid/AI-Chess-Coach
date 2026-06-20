@@ -91,7 +91,7 @@ Rules / non-goals:
 
 ## Task 32 — Local Ollama Provider Adapter
 
-Status: planned
+Status: complete
 
 Dependencies:
 

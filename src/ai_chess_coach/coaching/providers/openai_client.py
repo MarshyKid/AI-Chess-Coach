@@ -6,26 +6,16 @@ import os
 from typing import Any
 
 from ai_chess_coach.coaching.llm_client import LLMPrompt
+from ai_chess_coach.coaching.providers.errors import (
+    EmptyLLMResponseError,
+    LLMProviderError,
+    MissingLLMApiKeyError,
+    MissingLLMProviderDependencyError,
+)
 
 DEFAULT_OPENAI_MODEL = "gpt-5.4-mini"
 OPENAI_API_KEY_ENV_VAR = "OPENAI_API_KEY"
 OPENAI_MODEL_ENV_VAR = "AI_CHESS_COACH_OPENAI_MODEL"
-
-
-class LLMProviderError(RuntimeError):
-    """Base error for LLM provider adapter failures."""
-
-
-class MissingLLMApiKeyError(LLMProviderError):
-    """Raised when a real provider client needs an API key and none is configured."""
-
-
-class MissingLLMProviderDependencyError(LLMProviderError):
-    """Raised when an optional provider SDK is not installed."""
-
-
-class EmptyLLMResponseError(LLMProviderError):
-    """Raised when a provider returns no usable text."""
 
 
 def _configured_value(value: str | None) -> str | None:
