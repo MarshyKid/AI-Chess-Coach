@@ -22,6 +22,20 @@ Run a specific test module:
 uv run python -m unittest tests.pipeline.test_golden_pgns
 ```
 
+## API Tests
+
+The minimal backend API uses optional FastAPI dependencies. When working on the
+API, sync with the API extra before running tests:
+
+```bash
+uv sync --extra api
+uv run python -m unittest tests.api.test_app
+```
+
+The API tests use FastAPI's `TestClient` plus fake analysis and LLM seams. They
+do not require a real Stockfish binary, a running Ollama server, an OpenAI API
+key, or network access.
+
 ## Golden PGN Regression Tests
 
 The golden PGN corpus lives in:

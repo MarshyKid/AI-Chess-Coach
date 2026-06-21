@@ -443,6 +443,17 @@ Do not build these unless the current task explicitly calls for them:
 The product-facing vertical slice may add a minimal API and Vite React frontend,
 but those layers must consume backend analysis outputs.
 
+# Minimal API Boundary
+
+The local-development API is a transport layer over the existing backend
+pipeline. It may accept raw PGN from a client only to run deterministic backend
+analysis. It must not implement detector logic, call Stockfish outside the
+engine layer, or send raw PGN text to the LLM.
+
+API responses should serialize frontend-friendly summaries such as selected
+coaching moments and weakness profile data instead of leaking raw Python,
+python-chess, detector, or engine objects.
+
 ---
 
 # Future Frontend Boundary

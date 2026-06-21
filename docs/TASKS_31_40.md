@@ -283,7 +283,7 @@ Rules / non-goals:
 
 ## Task 34 — Minimal Backend API
 
-Status: planned
+Status: complete
 
 Dependencies:
 
@@ -293,35 +293,38 @@ Goal:
 
 Add a small local-development API layer for the future frontend.
 
-Possible endpoints:
+Implemented endpoints:
 
 ```text
+GET /health
 POST /analyze
 POST /coach
 ```
 
-Design decision to make during Task 34:
+Design decision made during Task 34:
 
-- Because there is no persistence yet, choose whether `/coach` accepts PGN plus
-  question in one request or accepts structured evidence returned by `/analyze`.
-- Prefer the simpler MVP option and document the tradeoff.
-- Decide how provider selection should work locally, for example `ollama` by
-  default and `openai` by explicit configuration.
+- Because there is no persistence yet, `/coach` accepts PGN plus question in
+  one request.
+- Raw PGN is used only for deterministic backend analysis and is not sent to
+  the LLM.
+- The API wires Ollama only for `/coach`; OpenAI remains an optional adapter but
+  is not wired into the API.
 
 Acceptance criteria:
 
 - API exposes basic PGN analysis.
-- API exposes basic evidence-grounded coaching.
+- API exposes basic Ollama-backed evidence-grounded coaching.
 - API returns JSON suitable for a frontend.
-- API can use fake LLM clients in tests.
-- API does not expose raw internal objects directly if a simpler response DTO is
-  better.
+- API uses fake analysis and LLM seams in tests.
+- API does not expose raw internal objects directly.
+- Raw PGN is used only for deterministic backend analysis and is not sent to
+  the LLM.
 - No auth or persistence is added.
 
 Rules / non-goals:
 
-- Do not add production deployment, database, auth, frontend polish, or detector
-  expansion.
+- Do not add production deployment, database, auth, frontend polish, OpenAI API
+  wiring, provider selection, or detector expansion.
 
 ---
 

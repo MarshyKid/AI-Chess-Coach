@@ -200,11 +200,74 @@ real evidence. If a small local model describes material or board features from
 a FEN anyway, treat that as a model-following limitation rather than a backend
 analysis result.
 
+## Run The Local Backend API
+
+The local-development API exposes the backend MVP over HTTP for the future
+frontend:
+
+```text
+PGN input -> backend analysis -> selected coaching evidence -> optional Ollama answer
+```
+
+Install the optional API dependencies:
+
+```bash
+uv sync --extra api
+```
+
+Start the FastAPI server:
+
+```bash
+uv run uvicorn ai_chess_coach.api.app:app --reload
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Analyze a PGN without calling an LLM:
+
+```bash
+curl -X POST http://127.0.0.1:8000/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"pgn": "[Event \"Example\"]\n\n1. e4 *"}'
+```
+
+Ask a local Ollama-backed coaching question:
+
+```bash
+curl -X POST http://127.0.0.1:8000/coach \
+  -H "Content-Type: application/json" \
+  -d '{"pgn": "[Event \"Example\"]\n\n1. e4 *", "question": "What should I improve?"}'
+```
+
+Optional Ollama overrides:
+
+```json
+{
+  "model": "qwen2.5:7b",
+  "ollama_base_url": "http://localhost:11434"
+}
+```
+
+The API uses raw PGN only to run deterministic backend analysis. It sends only
+selected `CoachingMoment` objects and the `WeaknessProfile` to `LLMChatCoach`;
+raw PGN text is not sent to the LLM.
+
+Common API errors:
+
+- `400 Invalid PGN or analysis input`: the PGN could not be replayed or analyzed
+- `503 Stockfish unavailable`: configure `STOCKFISH_PATH` or put `stockfish` on `PATH`
+- `503 Ollama unavailable`: run `ollama serve`
+- `503 Ollama model not found`: run `ollama pull llama3.2:3b` or pass `model`
+- `502 Empty LLM response`: the provider returned no usable text
+
 ## What This MVP Does Not Include
 
 The backend MVP does not include:
 
-- API/frontend wiring for real LLM provider calls
 - frontend UI
 - database persistence
 - authentication
