@@ -194,6 +194,12 @@ do not require Ollama, a local server, or downloaded models.
 The Ollama adapter is wired into the chat CLI. OpenAI remains an optional
 provider adapter, but this CLI intentionally uses Ollama only.
 
+Local model quality varies. The prompt explicitly tells the model that FENs and
+position references are identifiers only and that selected coaching moments are
+real evidence. If a small local model describes material or board features from
+a FEN anyway, treat that as a model-following limitation rather than a backend
+analysis result.
+
 ## What This MVP Does Not Include
 
 The backend MVP does not include:

@@ -183,19 +183,18 @@ class LLMGroundingTest(unittest.TestCase):
             coaching_moments=(moment,),
         )
 
-        self.assertLess(
-            prompt_without_raw.user.index("## Coaching Moments"),
-            prompt_without_raw.user.index("## Weakness Profile"),
+        self.assertIn(
+            "Structured evidence is supplied. Base your answer on the supplied "
+            "Coaching Moments and Weakness Profile.",
+            prompt_without_raw.user,
         )
         self.assertLess(
+            prompt_without_raw.user.index("## Evidence Status"),
             prompt_without_raw.user.index("## Coaching Moments"),
-            prompt_without_raw.user.index("## Retrieved Patterns"),
         )
-        self.assertLess(
-            prompt_without_raw.user.index("## Coaching Moments"),
-            prompt_without_raw.user.index("## Retrieved Verified Events"),
-        )
-        self.assertIn("## Retrieved Verified Events\nNone supplied.", prompt_without_raw.user)
+        self.assertNotIn("## Weakness Profile", prompt_without_raw.user)
+        self.assertNotIn("## Retrieved Patterns", prompt_without_raw.user)
+        self.assertNotIn("## Retrieved Verified Events", prompt_without_raw.user)
         self.assertNotIn("Hanging Piece Lost (hanging_piece_lost)", prompt_without_raw.user)
 
         prompt_with_raw = PromptBuilder().build(
@@ -221,6 +220,11 @@ class LLMGroundingTest(unittest.TestCase):
         self.assertIn("Use only the supplied structured evidence.", prompt.system)
         self.assertIn("Do not calculate moves.", prompt.system)
         self.assertIn("Do not analyze FENs independently.", prompt.system)
+        self.assertIn("Treat FENs and position references as identifiers only.", prompt.system)
+        self.assertIn(
+            "Do not infer material, threats, legal moves, board features, or tactics from a FEN.",
+            prompt.system,
+        )
         self.assertIn("Do not analyze raw PGNs.", prompt.system)
         self.assertIn(
             "Do not infer tactics or positional ideas not present in the evidence.",
@@ -230,16 +234,71 @@ class LLMGroundingTest(unittest.TestCase):
             "Do not claim a move is best unless the supplied evidence says so.",
             prompt.system,
         )
+        self.assertIn(
+            "Do not ask the user for more game context unless no structured evidence is supplied.",
+            prompt.system,
+        )
         self.assertIn("If the evidence is insufficient, say what is missing.", prompt.system)
         self.assertNotIn(question, section_text(prompt.user, "Coaching Moments"))
-        self.assertNotIn(question, section_text(prompt.user, "Retrieved Verified Events"))
+        self.assertNotIn("## Retrieved Verified Events", prompt.user)
 
     def test_empty_evidence_is_explicitly_marked(self) -> None:
         prompt = PromptBuilder().build("Can you help?")
 
-        self.assertIn("## Evidence Status\nNo structured evidence supplied.", prompt.user)
+        self.assertIn(
+            "## Evidence Status\nNo structured evidence supplied. Say what evidence is missing.",
+            prompt.user,
+        )
         self.assertIn("## Coaching Moments\nNone supplied.", prompt.user)
-        self.assertIn("## Retrieved Verified Events\nNone supplied.", prompt.user)
+        self.assertNotIn("## Retrieved Verified Events", prompt.user)
+
+    def test_fork_prompt_regression_marks_evidence_present_and_fen_as_reference_only(
+        self,
+    ) -> None:
+        event = make_verified_event(
+            "fork_missed",
+            evidence={
+                "forking_piece_square": "d3",
+                "target_squares": ("f4", "e5"),
+                "target_pieces": ("q", "k"),
+                "forking_move_san": "Nd3+",
+            },
+        )
+        moment = CoachingMoment(
+            title="Move 1: Fork missed",
+            explanation="The candidate tactic was stronger than the played move.",
+            supporting_evidence=(event,),
+            position_reference="8/8/8/4k3/5q2/8/5N2/K7 w - - 0 1",
+            highlights=(chess.D3,),
+        )
+        profile = WeaknessProfile(
+            strengths=(),
+            execution_strengths=(),
+            weaknesses=(make_pattern("fork_missed", supporting_events=(event,)),),
+            recurring_themes=(make_pattern("fork_missed", supporting_events=(event,)),),
+        )
+
+        prompt = PromptBuilder().build(
+            "What should I improve?",
+            coaching_moments=(moment,),
+            weakness_profile=profile,
+        )
+
+        self.assertIn("Structured evidence is supplied.", prompt.user)
+        self.assertIn(
+            "Empty optional retrieved sections do not mean there is no evidence.",
+            prompt.user,
+        )
+        self.assertIn(
+            "Position reference only, do not analyze as FEN: "
+            "8/8/8/4k3/5q2/8/5N2/K7 w - - 0 1",
+            prompt.user,
+        )
+        self.assertIn("Move 1: Fork missed", prompt.user)
+        self.assertIn("Weaknesses: Fork Missed", prompt.user)
+        self.assertNotIn("## Retrieved Patterns", prompt.user)
+        self.assertNotIn("## Retrieved Verified Events", prompt.user)
+        self.assertNotIn("No structured evidence supplied", prompt.user)
 
     def test_raw_pgn_protection_is_structural(self) -> None:
         parameters = set(signature(PromptBuilder.build).parameters)

@@ -68,13 +68,24 @@ Grounded prompts must instruct the LLM to:
 - use only supplied structured evidence
 - avoid calculating moves
 - avoid analyzing FENs independently
+- treat FENs and position references as identifiers only
+- avoid inferring material, threats, legal moves, board features, or tactics
+  from a FEN
 - avoid analyzing raw PGNs
 - avoid inventing tactics or positional ideas not present in evidence
 - avoid claiming a move is best unless supplied evidence says so
+- avoid claiming there is no evidence when selected coaching moments or a
+  weakness profile are supplied
+- avoid asking for more game context unless no structured evidence is supplied
+- base answers mainly on Coaching Moments and Weakness Profile when supplied
 - state what evidence is missing when the evidence is insufficient
 
 Mate-aware rank values are internal ordering values. They may be described as
 mate-aware rank impact, but never as centipawns.
+
+Empty optional retrieved sections do not mean evidence is absent. Selected
+coaching moments and weakness profiles are primary evidence, especially for
+local models that may otherwise over-focus on missing optional sections.
 
 ## Provider Clients
 
@@ -161,3 +172,7 @@ It then calls `LLMChatCoach` with selected `CoachingMoment` objects and the
 
 The CLI must not pass raw PGN text, raw full-game dumps, or unverified chess
 claims into `LLMChatCoach` or `PromptBuilder`.
+
+Position references shown in prompts may be FEN strings, but they are labels for
+grounding and UI/debugging. They are not instructions for the LLM to inspect the
+board or derive new chess facts.

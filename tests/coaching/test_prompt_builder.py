@@ -113,7 +113,28 @@ class PromptBuilderTest(unittest.TestCase):
         self.assertIn("Use only the supplied structured evidence.", prompt.system)
         self.assertIn("Do not calculate moves.", prompt.system)
         self.assertIn("Do not analyze FENs independently.", prompt.system)
+        self.assertIn("Treat FENs and position references as identifiers only.", prompt.system)
+        self.assertIn(
+            "Do not infer material, threats, legal moves, board features, or tactics from a FEN.",
+            prompt.system,
+        )
         self.assertIn("Do not analyze raw PGNs.", prompt.system)
+        self.assertIn(
+            "If Coaching Moments or a Weakness Profile are supplied, do not say there is no evidence.",
+            prompt.system,
+        )
+        self.assertIn(
+            "Do not ask the user for more game context unless no structured evidence is supplied.",
+            prompt.system,
+        )
+        self.assertIn(
+            "Base the answer mainly on Coaching Moments and Weakness Profile when they are supplied.",
+            prompt.system,
+        )
+        self.assertIn(
+            "Do not mention empty optional retrieved sections as evidence absence.",
+            prompt.system,
+        )
         self.assertIn("## User Question\nHow should I improve?", prompt.user)
 
     def test_prompt_separates_question_from_evidence_sections(self) -> None:
@@ -121,20 +142,15 @@ class PromptBuilderTest(unittest.TestCase):
 
         self.assertLess(
             prompt.user.index("## User Question"),
+            prompt.user.index("## Evidence Status"),
+        )
+        self.assertLess(
+            prompt.user.index("## Evidence Status"),
             prompt.user.index("## Coaching Moments"),
         )
-        self.assertLess(
-            prompt.user.index("## Coaching Moments"),
-            prompt.user.index("## Weakness Profile"),
-        )
-        self.assertLess(
-            prompt.user.index("## Weakness Profile"),
-            prompt.user.index("## Retrieved Patterns"),
-        )
-        self.assertLess(
-            prompt.user.index("## Retrieved Patterns"),
-            prompt.user.index("## Retrieved Verified Events"),
-        )
+        self.assertNotIn("## Weakness Profile", prompt.user)
+        self.assertNotIn("## Retrieved Patterns", prompt.user)
+        self.assertNotIn("## Retrieved Verified Events", prompt.user)
 
     def test_coaching_moments_appear_first_and_use_detail_formatter(self) -> None:
         event = make_verified_event(
@@ -159,8 +175,16 @@ class PromptBuilderTest(unittest.TestCase):
             prompt.user.index("Move 2: Piece safety issue"),
             prompt.user.index("## Retrieved Patterns"),
         )
+        self.assertIn(
+            "Structured evidence is supplied. Base your answer on the supplied "
+            "Coaching Moments and Weakness Profile.",
+            prompt.user,
+        )
         self.assertIn("Explanation: This move left a piece undefended.", prompt.user)
-        self.assertIn("Position reference: after-fen", prompt.user)
+        self.assertIn(
+            "Position reference only, do not analyze as FEN: after-fen",
+            prompt.user,
+        )
         self.assertIn("Highlights: e4", prompt.user)
         self.assertIn(
             "hanging_piece_created: white bishop on d4 became hanging; "
@@ -264,10 +288,13 @@ class PromptBuilderTest(unittest.TestCase):
         prompt = PromptBuilder().build("What can you tell me?")
 
         self.assertIn("## Coaching Moments\nNone supplied.", prompt.user)
-        self.assertIn("## Weakness Profile\nNone supplied.", prompt.user)
-        self.assertIn("## Retrieved Patterns\nNone supplied.", prompt.user)
-        self.assertIn("## Retrieved Verified Events\nNone supplied.", prompt.user)
-        self.assertIn("## Evidence Status\nNo structured evidence supplied.", prompt.user)
+        self.assertNotIn("## Weakness Profile", prompt.user)
+        self.assertNotIn("## Retrieved Patterns", prompt.user)
+        self.assertNotIn("## Retrieved Verified Events", prompt.user)
+        self.assertIn(
+            "## Evidence Status\nNo structured evidence supplied. Say what evidence is missing.",
+            prompt.user,
+        )
 
     def test_invalid_input_types_raise_type_error(self) -> None:
         builder = PromptBuilder()

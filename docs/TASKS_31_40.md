@@ -244,13 +244,50 @@ Rules / non-goals:
 
 ---
 
+## Task 33B — Local LLM Prompt Quality Pass
+
+Status: complete
+
+Dependencies:
+
+- Task 33
+- Existing `PromptBuilder`
+- Existing Ollama chat CLI
+
+Goal:
+
+Tighten prompt grounding for local models after manual Ollama testing showed
+the model could over-interpret FEN references or confuse empty optional
+retrieved sections with no evidence.
+
+Acceptance criteria:
+
+- Prompt tells the LLM that FENs and position references are identifiers only.
+- Prompt tells the LLM not to infer material, threats, legal moves, board
+  features, or tactics from a FEN.
+- Prompt includes evidence status for both evidence-present and no-evidence
+  cases.
+- Empty optional retrieved sections are omitted when no retrieved patterns or
+  verified events are supplied.
+- Prompt tells the LLM not to say there is no evidence when selected coaching
+  moments or a weakness profile are supplied.
+- Tests verify the prompt contract without calling Ollama or OpenAI.
+
+Rules / non-goals:
+
+- Do not change detectors, engine verification, retrieval, providers, CLI
+  architecture, or coaching selection.
+- Do not add model output snapshot tests.
+
+---
+
 ## Task 34 — Minimal Backend API
 
 Status: planned
 
 Dependencies:
 
-- Task 33
+- Task 33B
 
 Goal:
 

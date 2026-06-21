@@ -23,9 +23,15 @@ SYSTEM_PROMPT = """You are a chess coach explaining verified evidence.
 Use only the supplied structured evidence.
 Do not calculate moves.
 Do not analyze FENs independently.
+Treat FENs and position references as identifiers only.
+Do not infer material, threats, legal moves, board features, or tactics from a FEN.
 Do not analyze raw PGNs.
 Do not infer tactics or positional ideas not present in the evidence.
 Do not claim a move is best unless the supplied evidence says so.
+If Coaching Moments or a Weakness Profile are supplied, do not say there is no evidence.
+Do not ask the user for more game context unless no structured evidence is supplied.
+Base the answer mainly on Coaching Moments and Weakness Profile when they are supplied.
+Do not mention empty optional retrieved sections as evidence absence.
 If the evidence is insufficient, say what is missing.
 Be clear about uncertainty.
 Explain in a helpful coaching tone."""
@@ -142,27 +148,41 @@ def _user_prompt(
     patterns: tuple[DetectedPattern, ...],
     weakness_profile: WeaknessProfile | None,
 ) -> str:
+    has_evidence = bool(
+        coaching_moments
+        or weakness_profile is not None
+        or patterns
+        or verified_events
+    )
     sections = [
         _section("User Question", question),
+        _section("Evidence Status", _evidence_status_text(has_evidence)),
         _section("Coaching Moments", _coaching_moments_text(coaching_moments)),
-        _section("Weakness Profile", _weakness_profile_text(weakness_profile)),
-        _section("Retrieved Patterns", _patterns_text(patterns)),
-        _section("Retrieved Verified Events", _verified_events_text(verified_events)),
     ]
 
-    if (
-        not coaching_moments
-        and weakness_profile is None
-        and not patterns
-        and not verified_events
-    ):
-        sections.append(_section("Evidence Status", "No structured evidence supplied."))
+    if weakness_profile is not None:
+        sections.append(_section("Weakness Profile", _weakness_profile_text(weakness_profile)))
+    if patterns:
+        sections.append(_section("Retrieved Patterns", _patterns_text(patterns)))
+    if verified_events:
+        sections.append(_section("Retrieved Verified Events", _verified_events_text(verified_events)))
 
     return "\n\n".join(sections)
 
 
 def _section(title: str, content: str) -> str:
     return f"## {title}\n{content}"
+
+
+def _evidence_status_text(has_evidence: bool) -> str:
+    if not has_evidence:
+        return "No structured evidence supplied. Say what evidence is missing."
+
+    return (
+        "Structured evidence is supplied. Base your answer on the supplied "
+        "Coaching Moments and Weakness Profile. Empty optional retrieved sections "
+        "do not mean there is no evidence."
+    )
 
 
 def _coaching_moments_text(moments: tuple[CoachingMoment, ...]) -> str:
@@ -179,7 +199,7 @@ def _coaching_moment_text(moment: CoachingMoment) -> str:
     lines = [
         moment.title,
         f"Explanation: {moment.explanation}",
-        f"Position reference: {_value(moment.position_reference)}",
+        f"Position reference only, do not analyze as FEN: {_value(moment.position_reference)}",
         f"Highlights: {_squares(moment.highlights)}",
     ]
     details = format_coaching_moment_details(moment)

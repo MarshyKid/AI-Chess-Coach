@@ -215,9 +215,12 @@ class GoldenPgnRegressionTest(unittest.TestCase):
         assert client.received_prompt is not None
         self.assertIn("## Coaching Moments", client.received_prompt.user)
         self.assertIn("## Weakness Profile", client.received_prompt.user)
+        self.assertIn("## Evidence Status", client.received_prompt.user)
+        self.assertIn("Structured evidence is supplied.", client.received_prompt.user)
         self.assertIn("What should I study from this game?", client.received_prompt.user)
-        self.assertIn("## Retrieved Verified Events\nNone supplied.", client.received_prompt.user)
+        self.assertNotIn("## Retrieved Verified Events", client.received_prompt.user)
         self.assertIn("Use only the supplied structured evidence.", client.received_prompt.system)
+        self.assertIn("Treat FENs and position references as identifiers only.", client.received_prompt.system)
         self.assertIn("Do not analyze raw PGNs.", client.received_prompt.system)
         self.assertNotIn("[Event", client.received_prompt.user)
 
