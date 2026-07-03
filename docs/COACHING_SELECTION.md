@@ -400,3 +400,26 @@ Representative verified events
 It should not receive raw PGNs or an unfiltered dump of every detector event by default.
 
 This keeps the LLM as a communicator and teacher over verified evidence, not as the chess analysis engine.
+
+### Prompt Boundary (Task 27)
+
+The selected evidence reaches the LLM through a provider-agnostic boundary in
+`src/ai_chess_coach/coaching/`:
+
+- `LLMPrompt` — an immutable `system` + `user` prompt value object.
+- `LLMClient` — a `runtime_checkable` protocol (`generate(prompt) -> str`) that any provider
+  client can implement and that tests fake without network access.
+- `PromptBuilder.build(question, *, coaching_moments, verified_events, patterns,
+  weakness_profile)` — deterministically assembles a grounded prompt from *structured evidence
+  only*. Coaching moments are rendered first as the primary teaching points; the weakness
+  profile (including execution strengths), retrieved patterns, and supporting verified events
+  follow in clearly labeled sections separated from the player's question. Evidence detail
+  reuses `format_coaching_moment_details` / `format_supporting_event_detail`; mate-aware rank
+  impact is never presented as centipawns.
+
+There is no raw-PGN input path, and the builder rejects an obvious PGN blob in the question.
+The system prompt instructs the LLM to use only the supplied evidence and never to analyze
+positions, calculate moves, or invent unsupported claims. A concrete provider client
+(defaulting to `claude-opus-4-8`, reading `ANTHROPIC_API_KEY`, shipped as an optional
+dependency) and the conversational `LLMChatCoach` wrapper are deferred to later tasks; Task 27
+adds only the boundary and prompt building.

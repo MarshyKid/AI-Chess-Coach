@@ -505,7 +505,7 @@ Rules:
 
 ## Task 27 — LLM Client And Prompt Builder
 
-Status: next planned task
+Status: complete and accepted after implementation
 
 Dependencies:
 

@@ -628,6 +628,13 @@ Rules:
 - Must be grounded in verified events or detected patterns.
 - Must not invent chess facts that are not present in evidence.
 
+## LLM Prompt Boundary
+
+`LLMPrompt`, the `LLMClient` protocol, and `PromptBuilder` (in
+`src/ai_chess_coach/coaching/`) are provider-agnostic boundary objects, not chess domain
+models: they format already-verified evidence for a language model. See
+`docs/COACHING_SELECTION.md` → "Prompt Boundary (Task 27)".
+
 ---
 
 # Model Lifecycle
