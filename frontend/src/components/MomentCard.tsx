@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CoachingMomentSummary } from "../types";
 import { ChessBoard } from "./ChessBoard";
 
@@ -9,6 +9,16 @@ interface MomentCardProps {
 
 export function MomentCard({ moment, index }: MomentCardProps) {
   const [showEvidence, setShowEvidence] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!expanded) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setExpanded(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [expanded]);
 
   return (
     <article className="moment">
@@ -46,6 +56,47 @@ export function MomentCard({ moment, index }: MomentCardProps) {
             <p className="moment__squares">
               Watch {moment.highlights.join(", ")}
             </p>
+          )}
+          <button
+            className="btn btn--tiny moment__expand"
+            onClick={() => setExpanded(true)}
+          >
+            Expand board
+          </button>
+
+          {expanded && (
+            <div
+              className="board-modal"
+              onClick={() => setExpanded(false)}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Position for ${moment.title}`}
+            >
+              <div
+                className="board-modal__card"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="board-modal__top">
+                  <h3>{moment.title}</h3>
+                  <button
+                    className="btn btn--tiny"
+                    onClick={() => setExpanded(false)}
+                    aria-label="Close expanded board"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+                <ChessBoard
+                  fen={moment.position_reference}
+                  highlights={moment.highlights}
+                />
+                {moment.highlights.length > 0 && (
+                  <p className="moment__squares">
+                    Watch {moment.highlights.join(", ")}
+                  </p>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}

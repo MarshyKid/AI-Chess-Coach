@@ -1,18 +1,10 @@
-const PIECE_GLYPHS: Record<string, string> = {
-  k: "♚",
-  q: "♛",
-  r: "♜",
-  b: "♝",
-  n: "♞",
-  p: "♟",
-};
+import { Piece, isPieceChar } from "./pieces";
 
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 interface SquareInfo {
   name: string;
   piece: string | null;
-  isWhitePiece: boolean;
   isDark: boolean;
 }
 
@@ -38,7 +30,7 @@ function readBoard(fen: string): SquareInfo[] | null {
           squares.push(makeSquare(fileIndex, rankIndex, null));
           fileIndex++;
         }
-      } else if (PIECE_GLYPHS[char.toLowerCase()]) {
+      } else if (isPieceChar(char)) {
         squares.push(makeSquare(fileIndex, rankIndex, char));
         fileIndex++;
       } else {
@@ -59,7 +51,6 @@ function makeSquare(
   return {
     name: `${FILES[fileIndex]}${8 - rankIndex}`,
     piece,
-    isWhitePiece: piece !== null && piece === piece.toUpperCase(),
     isDark: (fileIndex + rankIndex) % 2 === 1,
   };
 }
@@ -84,17 +75,7 @@ export function ChessBoard({ fen, highlights }: ChessBoardProps) {
 
         return (
           <div key={square.name} className={classes.join(" ")}>
-            {square.piece && (
-              <span
-                className={
-                  square.isWhitePiece
-                    ? "board__piece board__piece--white"
-                    : "board__piece board__piece--black"
-                }
-              >
-                {PIECE_GLYPHS[square.piece.toLowerCase()]}
-              </span>
-            )}
+            {square.piece && <Piece piece={square.piece} />}
             {square.name[0] === "a" && (
               <span className="board__rank-label">{square.name[1]}</span>
             )}

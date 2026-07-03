@@ -368,6 +368,7 @@ h3 {
 .board {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
   aspect-ratio: 1;
   width: 100%;
   border: 2px solid #000;
@@ -380,6 +381,7 @@ h3 {
   position: relative;
   display: grid;
   place-items: center;
+  aspect-ratio: 1;
 }
 
 .board__square--light {
@@ -397,18 +399,11 @@ h3 {
 }
 
 .board__piece {
-  font-size: clamp(16px, 3.2vw, 24px);
-  line-height: 1;
+  width: 88%;
+  height: 88%;
+  display: block;
   user-select: none;
-}
-
-.board__piece--white {
-  color: #fff;
-  -webkit-text-stroke: 1.1px #000;
-}
-
-.board__piece--black {
-  color: #000;
+  pointer-events: none;
 }
 
 .board__rank-label,
@@ -427,6 +422,45 @@ h3 {
 .board__file-label {
   bottom: 1px;
   right: 2px;
+}
+
+.moment__expand {
+  display: block;
+  margin: 10px auto 0;
+}
+
+/* ---------- expanded board modal ---------- */
+
+.board-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.board-modal__card {
+  width: min(80vh, 560px, 100%);
+  padding: 18px;
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.board-modal__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.board-modal__top h3 {
+  font-size: 18px;
+  min-width: 0;
 }
 
 /* ---------- profile ---------- */
@@ -666,10 +700,6 @@ h3 {
     width: 100%;
     max-width: 300px;
     align-self: center;
-  }
-
-  .board__piece {
-    font-size: clamp(18px, 8vw, 30px);
   }
 
   .coach__form {
