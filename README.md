@@ -55,7 +55,8 @@ evidence pipelines, and careful LLM boundaries.
   - backend CLI analysis
   - local Ollama-backed chat CLI
   - FastAPI local backend API
-  - Vite + React frontend scaffold
+  - local Vite + React interface for PGN analysis, coaching moments,
+  weakness profiles, interactive board positions, and Ollama-backed chat
 
 ## Architecture Highlights
 
@@ -247,18 +248,25 @@ This repo is meant to show:
 ## Current Limitations
 
 - Detector coverage is intentionally small and MVP-focused.
-- The frontend is a local-development scaffold, not a polished production app.
+- The frontend implements the complete local MVP flow, but it is not yet
+  polished or deployed as a production application.
 - No user accounts, persistence, deployment, or game history database yet.
 - LLM output quality depends on the configured provider/model, especially for
   local Ollama models.
 
 ## Status
 
-This is an active portfolio project. The current milestone is a local vertical
-slice:
+## Status
+
+The current repository implements a working local vertical slice:
 
 ```text
-paste PGN -> backend analysis -> selected evidence -> local LLM coaching answer -> simple UI
+paste PGN
+-> deterministic backend analysis
+-> Stockfish-verified coaching moments
+-> interactive board positions
+-> weakness profile
+-> local Ollama coaching
 ```
 
 Future work would include richer board interaction, more detectors, persistence,
