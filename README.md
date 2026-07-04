@@ -24,6 +24,13 @@ PGN
 -> grounded LLM explanation
 ```
 
+## Demo
+
+https://github.com/user-attachments/assets/4f246f24-ec26-423e-b28c-17b038165d3f
+
+The demo runs locally using Stockfish for verified chess analysis and Ollama
+for evidence-grounded coaching explanations.
+
 ## Why This Project Exists
 
 Most chess tools answer, "What was the best move?"
